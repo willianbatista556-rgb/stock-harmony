@@ -14,6 +14,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      alertas_estoque: {
+        Row: {
+          criado_em: string | null
+          empresa_id: string
+          id: string
+          produto_id: string
+          resolvido: boolean | null
+          resolvido_em: string | null
+          tipo: string
+        }
+        Insert: {
+          criado_em?: string | null
+          empresa_id: string
+          id?: string
+          produto_id: string
+          resolvido?: boolean | null
+          resolvido_em?: string | null
+          tipo: string
+        }
+        Update: {
+          criado_em?: string | null
+          empresa_id?: string
+          id?: string
+          produto_id?: string
+          resolvido?: boolean | null
+          resolvido_em?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alertas_estoque_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertas_estoque_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alertas_estoque_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
       categorias: {
         Row: {
           criado_em: string | null
@@ -92,6 +144,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produtos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compra_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
           },
         ]
       }
@@ -233,11 +292,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "estoque_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
             foreignKeyName: "estoque_produto_id_fkey"
             columns: ["produto_id"]
             isOneToOne: false
             referencedRelation: "produtos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
           },
         ]
       }
@@ -361,6 +434,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "movimentacoes_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
             foreignKeyName: "movimentacoes_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
@@ -373,6 +453,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "produtos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
           },
         ]
       }
@@ -538,7 +625,151 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      vw_consumo_medio_diario: {
+        Row: {
+          consumo_medio_diario: number | null
+          dias_com_saida: number | null
+          empresa_id: string | null
+          produto_id: string | null
+          produto_nome: string | null
+          total_saidas_30d: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
+      vw_estoque_por_deposito: {
+        Row: {
+          deposito_id: string | null
+          deposito_nome: string | null
+          deposito_tipo: string | null
+          empresa_id: string | null
+          num_produtos: number | null
+          total_itens: number | null
+          valor_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "depositos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_inventario_resumo: {
+        Row: {
+          empresa_id: string | null
+          produtos_estoque_baixo: number | null
+          produtos_zerados: number | null
+          total_estoque: number | null
+          total_produtos: number | null
+          valor_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_movimentacoes_diarias: {
+        Row: {
+          dia: string | null
+          empresa_id: string | null
+          total_ajustes: number | null
+          total_entradas: number | null
+          total_movimentacoes: number | null
+          total_saidas: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_previsao_ruptura: {
+        Row: {
+          consumo_medio_diario: number | null
+          dias_para_ruptura: number | null
+          empresa_id: string | null
+          estoque_atual: number | null
+          estoque_min: number | null
+          produto_id: string | null
+          produto_nome: string | null
+          sku: string | null
+          status_estoque: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_produtos_top_movimentados: {
+        Row: {
+          empresa_id: string | null
+          num_movimentacoes: number | null
+          produto_id: string | null
+          produto_nome: string | null
+          total_movimentado: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
     }
     Functions: {
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
