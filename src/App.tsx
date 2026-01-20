@@ -10,6 +10,9 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Produtos from "./pages/Produtos";
 import Movimentacoes from "./pages/Movimentacoes";
+import Depositos from "./pages/Depositos";
+import Categorias from "./pages/Categorias";
+import Fornecedores from "./pages/Fornecedores";
 import Placeholder from "./pages/Placeholder";
 import NotFound from "./pages/NotFound";
 
@@ -44,10 +47,7 @@ const App = () => (
               path="/categorias"
               element={
                 <AppLayout>
-                  <Placeholder
-                    title="Categorias"
-                    description="Gerencie as categorias e subcategorias dos seus produtos para uma organização eficiente."
-                  />
+                  <Categorias />
                 </AppLayout>
               }
             />
@@ -55,10 +55,7 @@ const App = () => (
               path="/depositos"
               element={
                 <AppLayout>
-                  <Placeholder
-                    title="Depósitos"
-                    description="Configure seus depósitos físicos e virtuais para controlar o estoque em múltiplas localizações."
-                  />
+                  <Depositos />
                 </AppLayout>
               }
             />
@@ -74,10 +71,7 @@ const App = () => (
               path="/fornecedores"
               element={
                 <AppLayout>
-                  <Placeholder
-                    title="Fornecedores"
-                    description="Cadastre e gerencie seus fornecedores para facilitar as compras e reposição de estoque."
-                  />
+                  <Fornecedores />
                 </AppLayout>
               }
             />
