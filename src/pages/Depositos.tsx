@@ -35,6 +35,14 @@ import {
 import { Label } from '@/components/ui/label';
 import { useDepositos, useCreateDeposito, useUpdateDeposito, useDeleteDeposito, Deposito } from '@/hooks/useDepositos';
 import { Skeleton } from '@/components/ui/skeleton';
+import { z } from 'zod';
+import { toast } from 'sonner';
+
+// Validation schema matching database constraints
+const depositoSchema = z.object({
+  nome: z.string().trim().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
+  tipo: z.string().min(1, 'Tipo é obrigatório'),
+});
 
 const tiposDeposito = [
   { value: 'fisico', label: 'Físico' },
@@ -74,12 +82,19 @@ export default function Depositos() {
   };
 
   const handleSubmit = async () => {
-    if (!nome.trim()) return;
+    // Validate with Zod schema
+    const result = depositoSchema.safeParse({ nome, tipo });
+
+    if (!result.success) {
+      const errors = result.error.errors.map(e => e.message).join(', ');
+      toast.error('Dados inválidos', { description: errors });
+      return;
+    }
 
     if (editingDeposito) {
-      await updateDeposito.mutateAsync({ id: editingDeposito.id, nome, tipo });
+      await updateDeposito.mutateAsync({ id: editingDeposito.id, nome: result.data.nome, tipo: result.data.tipo });
     } else {
-      await createDeposito.mutateAsync({ nome, tipo });
+      await createDeposito.mutateAsync({ nome: result.data.nome, tipo: result.data.tipo });
     }
     setDialogOpen(false);
   };

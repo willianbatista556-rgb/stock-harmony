@@ -35,6 +35,14 @@ import {
 import { Label } from '@/components/ui/label';
 import { useCategorias, useCreateCategoria, useUpdateCategoria, useDeleteCategoria, Categoria } from '@/hooks/useCategorias';
 import { Skeleton } from '@/components/ui/skeleton';
+import { z } from 'zod';
+import { toast } from 'sonner';
+
+// Validation schema matching database constraints
+const categoriaSchema = z.object({
+  nome: z.string().trim().min(1, 'Nome é obrigatório').max(100, 'Nome deve ter no máximo 100 caracteres'),
+  pai_id: z.string().uuid().nullable().optional(),
+});
 
 export default function Categorias() {
   const [search, setSearch] = useState('');
@@ -72,18 +80,28 @@ export default function Categorias() {
   };
 
   const handleSubmit = async () => {
-    if (!nome.trim()) return;
+    // Validate with Zod schema
+    const result = categoriaSchema.safeParse({
+      nome,
+      pai_id: paiId || null,
+    });
+
+    if (!result.success) {
+      const errors = result.error.errors.map(e => e.message).join(', ');
+      toast.error('Dados inválidos', { description: errors });
+      return;
+    }
 
     if (editingCategoria) {
       await updateCategoria.mutateAsync({
         id: editingCategoria.id,
-        nome,
-        pai_id: paiId || null,
+        nome: result.data.nome,
+        pai_id: result.data.pai_id || null,
       });
     } else {
       await createCategoria.mutateAsync({
-        nome,
-        pai_id: paiId || null,
+        nome: result.data.nome,
+        pai_id: result.data.pai_id || null,
       });
     }
     setDialogOpen(false);
