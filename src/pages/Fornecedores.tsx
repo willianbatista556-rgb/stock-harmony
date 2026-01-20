@@ -27,6 +27,16 @@ import {
 import { Label } from '@/components/ui/label';
 import { useFornecedores, useCreateFornecedor, useUpdateFornecedor, useDeleteFornecedor, Fornecedor } from '@/hooks/useFornecedores';
 import { Skeleton } from '@/components/ui/skeleton';
+import { z } from 'zod';
+import { toast } from 'sonner';
+
+// Validation schema matching database constraints
+const fornecedorSchema = z.object({
+  nome: z.string().trim().min(1, 'Nome é obrigatório').max(200, 'Nome deve ter no máximo 200 caracteres'),
+  cnpj_cpf: z.string().max(20, 'CNPJ/CPF deve ter no máximo 20 caracteres').optional().or(z.literal('')),
+  email: z.string().email('E-mail inválido').max(255, 'E-mail deve ter no máximo 255 caracteres').optional().or(z.literal('')),
+  telefone: z.string().max(20, 'Telefone deve ter no máximo 20 caracteres').optional().or(z.literal('')),
+});
 
 export default function Fornecedores() {
   const [search, setSearch] = useState('');
@@ -66,13 +76,25 @@ export default function Fornecedores() {
   };
 
   const handleSubmit = async () => {
-    if (!nome.trim()) return;
-
-    const data = {
+    // Validate with Zod schema
+    const result = fornecedorSchema.safeParse({
       nome,
       cnpj_cpf: cnpjCpf || undefined,
       email: email || undefined,
       telefone: telefone || undefined,
+    });
+
+    if (!result.success) {
+      const errors = result.error.errors.map(e => e.message).join(', ');
+      toast.error('Dados inválidos', { description: errors });
+      return;
+    }
+
+    const data = {
+      nome: result.data.nome,
+      cnpj_cpf: result.data.cnpj_cpf || undefined,
+      email: result.data.email || undefined,
+      telefone: result.data.telefone || undefined,
     };
 
     if (editingFornecedor) {

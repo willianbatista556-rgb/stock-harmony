@@ -33,6 +33,19 @@ import { useMovimentacoes, useCreateMovimentacao } from '@/hooks/useMovimentacoe
 import { useDepositos } from '@/hooks/useDepositos';
 import { useProdutos } from '@/hooks/useProdutos';
 import { Skeleton } from '@/components/ui/skeleton';
+import { z } from 'zod';
+import { toast } from 'sonner';
+
+// Validation schema matching database constraints
+const movimentacaoSchema = z.object({
+  tipo: z.enum(['entrada', 'saida', 'ajuste'], { message: 'Tipo inválido' }),
+  origem: z.string().min(1, 'Origem é obrigatória'),
+  produto_id: z.string().uuid('Produto inválido'),
+  deposito_id: z.string().uuid('Depósito inválido'),
+  qtd: z.number().refine(val => val !== 0, 'Quantidade não pode ser zero').refine(val => Math.abs(val) <= 999999999, 'Quantidade muito alta'),
+  custo_unit: z.number().nonnegative('Custo deve ser não-negativo').max(9999999999, 'Custo muito alto').optional(),
+  observacao: z.string().max(500, 'Observação deve ter no máximo 500 caracteres').optional(),
+});
 
 const tipoConfig = {
   entrada: { icon: ArrowDownRight, label: 'Entrada', color: 'text-success', bg: 'bg-success/10' },
@@ -93,16 +106,34 @@ export default function Movimentacoes() {
   };
 
   const handleSubmit = async () => {
-    if (!produtoId || !depositoId || !qtd) return;
+    const qtdValue = parseFloat(qtd);
+    const custoValue = custoUnit ? parseFloat(custoUnit) : undefined;
 
-    await createMovimentacao.mutateAsync({
+    // Validate with Zod schema
+    const result = movimentacaoSchema.safeParse({
       tipo,
       origem,
       produto_id: produtoId,
       deposito_id: depositoId,
-      qtd: parseFloat(qtd),
-      custo_unit: custoUnit ? parseFloat(custoUnit) : undefined,
+      qtd: isNaN(qtdValue) ? 0 : qtdValue,
+      custo_unit: custoValue,
       observacao: observacao || undefined,
+    });
+
+    if (!result.success) {
+      const errors = result.error.errors.map(e => e.message).join(', ');
+      toast.error('Dados inválidos', { description: errors });
+      return;
+    }
+
+    await createMovimentacao.mutateAsync({
+      tipo: result.data.tipo,
+      origem: result.data.origem,
+      produto_id: result.data.produto_id,
+      deposito_id: result.data.deposito_id,
+      qtd: result.data.qtd,
+      custo_unit: result.data.custo_unit,
+      observacao: result.data.observacao,
     });
     
     setDialogOpen(false);
