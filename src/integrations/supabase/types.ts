@@ -1108,6 +1108,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      pdv_finalizar_venda: {
+        Args: {
+          p_caixa_id: string
+          p_cliente_id: string
+          p_deposito_id: string
+          p_desconto: number
+          p_empresa_id: string
+          p_itens: Json
+          p_pagamentos: Json
+          p_subtotal: number
+          p_total: number
+        }
+        Returns: string
+      }
       text2ltree: { Args: { "": string }; Returns: unknown }
     }
     Enums: {
