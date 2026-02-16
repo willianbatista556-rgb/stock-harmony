@@ -463,6 +463,41 @@ export type Database = {
           },
         ]
       }
+      pagamentos: {
+        Row: {
+          criado_em: string | null
+          forma: string
+          id: string
+          troco: number | null
+          valor: number
+          venda_id: string
+        }
+        Insert: {
+          criado_em?: string | null
+          forma: string
+          id?: string
+          troco?: number | null
+          valor: number
+          venda_id: string
+        }
+        Update: {
+          criado_em?: string | null
+          forma?: string
+          id?: string
+          troco?: number | null
+          valor?: number
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       produtos: {
         Row: {
           ativo: boolean | null
@@ -591,25 +626,83 @@ export type Database = {
         }
         Relationships: []
       }
+      venda_itens: {
+        Row: {
+          desconto: number | null
+          id: string
+          preco_unit: number
+          produto_id: string
+          qtd: number
+          subtotal: number | null
+          venda_id: string
+        }
+        Insert: {
+          desconto?: number | null
+          id?: string
+          preco_unit: number
+          produto_id: string
+          qtd?: number
+          subtotal?: number | null
+          venda_id: string
+        }
+        Update: {
+          desconto?: number | null
+          id?: string
+          preco_unit?: number
+          produto_id?: string
+          qtd?: number
+          subtotal?: number | null
+          venda_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venda_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venda_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "venda_itens_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendas: {
         Row: {
           data: string | null
+          desconto: number | null
           empresa_id: string
           id: string
+          status: string | null
           total: number | null
           usuario_id: string | null
         }
         Insert: {
           data?: string | null
+          desconto?: number | null
           empresa_id: string
           id?: string
+          status?: string | null
           total?: number | null
           usuario_id?: string | null
         }
         Update: {
           data?: string | null
+          desconto?: number | null
           empresa_id?: string
           id?: string
+          status?: string | null
           total?: number | null
           usuario_id?: string | null
         }
