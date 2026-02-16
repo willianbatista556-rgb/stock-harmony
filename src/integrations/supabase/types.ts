@@ -66,6 +66,125 @@ export type Database = {
           },
         ]
       }
+      caixa_movimentacoes: {
+        Row: {
+          caixa_id: string
+          criado_em: string
+          descricao: string | null
+          empresa_id: string
+          id: string
+          tipo: string
+          usuario_id: string
+          valor: number
+          venda_id: string | null
+        }
+        Insert: {
+          caixa_id: string
+          criado_em?: string
+          descricao?: string | null
+          empresa_id: string
+          id?: string
+          tipo: string
+          usuario_id: string
+          valor: number
+          venda_id?: string | null
+        }
+        Update: {
+          caixa_id?: string
+          criado_em?: string
+          descricao?: string | null
+          empresa_id?: string
+          id?: string
+          tipo?: string
+          usuario_id?: string
+          valor?: number
+          venda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caixa_movimentacoes_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caixa_movimentacoes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caixa_movimentacoes_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caixas: {
+        Row: {
+          aberto_em: string
+          deposito_id: string
+          empresa_id: string
+          fechado_em: string | null
+          id: string
+          observacao_fechamento: string | null
+          status: string
+          usuario_id: string
+          valor_abertura: number
+          valor_fechamento: number | null
+        }
+        Insert: {
+          aberto_em?: string
+          deposito_id: string
+          empresa_id: string
+          fechado_em?: string | null
+          id?: string
+          observacao_fechamento?: string | null
+          status?: string
+          usuario_id: string
+          valor_abertura?: number
+          valor_fechamento?: number | null
+        }
+        Update: {
+          aberto_em?: string
+          deposito_id?: string
+          empresa_id?: string
+          fechado_em?: string | null
+          id?: string
+          observacao_fechamento?: string | null
+          status?: string
+          usuario_id?: string
+          valor_abertura?: number
+          valor_fechamento?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caixas_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caixas_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "caixas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categorias: {
         Row: {
           criado_em: string | null
@@ -764,6 +883,25 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "depositos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_fluxo_caixa_diario: {
+        Row: {
+          dia: string | null
+          empresa_id: string | null
+          entradas: number | null
+          num_movimentacoes: number | null
+          saidas: number | null
+          saldo: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "caixa_movimentacoes_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
