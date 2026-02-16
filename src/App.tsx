@@ -77,14 +77,7 @@ const App = () => (
                 </AppLayout>
               }
             />
-            <Route
-              path="/pdv"
-              element={
-                <AppLayout>
-                  <PDV />
-                </AppLayout>
-              }
-            />
+            <Route path="/pdv" element={<PDV />} />
             <Route
               path="/caixa"
               element={

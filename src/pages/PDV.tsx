@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ShoppingCart, Banknote, AlertTriangle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ShoppingCart, Banknote, AlertTriangle, LogOut } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-// Extracted components
 import { PDVSearch } from '@/components/pdv/PDVSearch';
 import { PDVInlineInput } from '@/components/pdv/PDVInlineInput';
 import { PDVItemsTable } from '@/components/pdv/PDVItemsTable';
@@ -41,6 +40,7 @@ export default function PDV() {
   const { data: produtos = [] } = useProdutos();
   const { data: depositos = [] } = useDepositos();
   const finalizarVenda = useFinalizarVenda();
+  const navigate = useNavigate();
 
   const [depositoId, setDepositoId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,6 +65,15 @@ export default function PDV() {
     }
   }, [depositos, depositoId]);
 
+  // Auto-focus search on mount (barcode scanner ready)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+      pdv.setMode('search');
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Search products (client-side filtering — instant)
   useEffect(() => {
     if (pdv.mode === 'search' && searchQuery.trim()) {
@@ -87,14 +96,43 @@ export default function PDV() {
       if (pdv.mode === 'search') searchInputRef.current?.focus();
       else if (pdv.mode === 'quantity' || pdv.mode === 'discount') inputRef.current?.focus();
       else if (pdv.mode === 'payment') paymentInputRef.current?.focus();
+      else if (pdv.mode === 'normal') searchInputRef.current?.focus();
     }, 50);
     return () => clearTimeout(timer);
   }, [pdv.mode]);
 
-  // === Keyboard handler (vim-style) ===
+  // === Keyboard handler (F-key based) ===
   const handleGlobalKeyDown = useCallback((e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+
+    // F-keys work globally regardless of mode or focus
+    if (e.key === 'F2') {
+      e.preventDefault();
+      if (pdv.items.length > 0) {
+        if (pdv.selectedIndex < 0) pdv.setSelectedIndex(0);
+        pdv.setMode('discount');
+        setInputValue(String(pdv.items[Math.max(0, pdv.selectedIndex)]?.desconto || 0));
+      }
+      return;
+    }
+    if (e.key === 'F4') {
+      e.preventDefault();
+      if (pdv.items.length > 0) {
+        pdv.setMode('payment');
+        setPaymentValue(String(pdv.restante.toFixed(2)));
+      }
+      return;
+    }
+    if (e.key === 'F3') {
+      e.preventDefault();
+      if (pdv.items.length > 0) {
+        if (pdv.selectedIndex < 0) pdv.setSelectedIndex(0);
+        pdv.setMode('quantity');
+        setInputValue(String(pdv.items[Math.max(0, pdv.selectedIndex)]?.qtd || 1));
+      }
+      return;
+    }
 
     // --- Search mode ---
     if (pdv.mode === 'search') {
@@ -141,27 +179,14 @@ export default function PDV() {
     }
 
     // --- Normal mode ---
-    if (isInput) return;
+    if (isInput) {
+      // If typing in search, let it through
+      if (e.key === 'Escape') { e.preventDefault(); pdv.setMode('normal'); setSearchQuery(''); }
+      return;
+    }
 
-    if (e.key === '/') { e.preventDefault(); pdv.setMode('search'); setSearchQuery(''); }
-    else if (e.key === 'q' && pdv.items.length > 0) {
-      e.preventDefault();
-      if (pdv.selectedIndex < 0) pdv.setSelectedIndex(0);
-      pdv.setMode('quantity');
-      setInputValue(String(pdv.items[Math.max(0, pdv.selectedIndex)]?.qtd || 1));
-    }
-    else if (e.key === 'd' && pdv.items.length > 0) {
-      e.preventDefault();
-      if (pdv.selectedIndex < 0) pdv.setSelectedIndex(0);
-      pdv.setMode('discount');
-      setInputValue(String(pdv.items[Math.max(0, pdv.selectedIndex)]?.desconto || 0));
-    }
-    else if (e.key === 'p' && pdv.items.length > 0) {
-      e.preventDefault();
-      pdv.setMode('payment');
-      setPaymentValue(String(pdv.restante.toFixed(2)));
-    }
-    else if (e.key === 'x' && pdv.items.length > 0 && pdv.selectedIndex >= 0) {
+    if (e.key === '/' || e.key === 'F1') { e.preventDefault(); pdv.setMode('search'); setSearchQuery(''); }
+    else if (e.key === 'Delete' && pdv.items.length > 0 && pdv.selectedIndex >= 0) {
       e.preventDefault(); pdv.removeItem(pdv.selectedIndex);
     }
     else if (e.key === 'ArrowDown') { e.preventDefault(); pdv.setSelectedIndex(i => Math.min(i + 1, pdv.items.length - 1)); }
@@ -210,25 +235,29 @@ export default function PDV() {
   }, [inputValue, pdv]);
 
   return (
-    <div className="h-[calc(100vh-2rem)] flex flex-col gap-3 animate-fade-in">
-      {/* Top Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+    <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col z-50">
+      {/* Top Bar — Compact, high contrast */}
+      <div className="flex items-center justify-between px-5 py-3 bg-card border-b border-border">
+        <div className="flex items-center gap-4">
+          <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
             <ShoppingCart className="w-5 h-5 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="text-xl font-display font-bold text-foreground">PDV</h1>
-            <p className="text-xs text-muted-foreground">Ponto de Venda</p>
-          </div>
+          <h1 className="text-lg font-display font-bold text-foreground tracking-tight">PDV</h1>
+          <Badge className={cn('text-xs px-3 py-1 font-mono font-bold tracking-wider', modeColor[pdv.mode])}>
+            {modeLabel[pdv.mode]}
+          </Badge>
+          {!caixaAberto && (
+            <div className="flex items-center gap-1.5 text-warning text-xs font-medium">
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Sem caixa</span>
+              <Link to="/caixa" className="underline font-bold hover:text-warning/80">Abrir</Link>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
-          <Badge className={cn('text-xs px-3 py-1 font-mono font-bold', modeColor[pdv.mode])}>
-            {modeLabel[pdv.mode]}
-          </Badge>
           <Select value={depositoId} onValueChange={setDepositoId}>
-            <SelectTrigger className="w-[180px] h-9">
+            <SelectTrigger className="w-[160px] h-8 text-sm">
               <SelectValue placeholder="Depósito" />
             </SelectTrigger>
             <SelectContent>
@@ -237,97 +266,113 @@ export default function PDV() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/')}
+            className="text-muted-foreground hover:text-foreground gap-1.5"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </Button>
         </div>
       </div>
 
-      {!caixaAberto && (
-        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/30 text-warning">
-          <AlertTriangle className="w-4 h-4 shrink-0" />
-          <span className="text-sm font-medium">Nenhum caixa aberto. As vendas não serão registradas no controle de caixa.</span>
-          <Link to="/caixa" className="text-sm font-bold underline ml-auto hover:text-warning/80">Abrir Caixa</Link>
-        </div>
-      )}
-
-      {/* Main Content — Split Screen */}
-      <div className="flex-1 grid grid-cols-5 gap-3 min-h-0">
-        {/* Left — Search + Items */}
-        <div className="col-span-3 flex flex-col gap-3 min-h-0">
-          <PDVSearch
-            ref={searchInputRef}
-            query={searchQuery}
-            onQueryChange={q => {
-              setSearchQuery(q);
-              if (pdv.mode !== 'search') pdv.setMode('search');
-            }}
-            onFocus={() => pdv.setMode('search')}
-            onClear={() => { setSearchQuery(''); pdv.setMode('normal'); }}
-            isSearchMode={pdv.mode === 'search'}
-            results={searchResults}
-            selectedIndex={searchSelectedIndex}
-            onSelectProduct={(produto) => {
-              pdv.addItem(produto, true);
-              setSearchQuery('');
-              searchInputRef.current?.focus();
-            }}
-          />
-
-          {(pdv.mode === 'quantity' || pdv.mode === 'discount') && pdv.selectedIndex >= 0 && (
-            <PDVInlineInput
-              ref={inputRef}
-              mode={pdv.mode}
-              productName={pdv.items[pdv.selectedIndex]?.produto.nome || ''}
-              value={inputValue}
-              onChange={setInputValue}
-              onConfirm={handleInlineConfirm}
-            />
-          )}
-
-          <PDVItemsTable
-            items={pdv.items}
-            selectedIndex={pdv.selectedIndex}
-            onSelectIndex={pdv.setSelectedIndex}
-            onRemoveItem={pdv.removeItem}
-          />
-        </div>
-
-        {/* Right — Summary + Payment + Shortcuts */}
-        <div className="col-span-2 flex flex-col gap-3 min-h-0">
-          <PDVCartSummary
-            items={pdv.items}
-            descontoGeral={pdv.descontoGeral}
-            total={pdv.total}
-          />
-
-          {pdv.mode === 'payment' && (
-            <PDVPaymentPanel
-              ref={paymentInputRef}
-              paymentForm={paymentForm}
-              onPaymentFormChange={setPaymentForm}
-              paymentValue={paymentValue}
-              onPaymentValueChange={setPaymentValue}
-              onAddPayment={handleAddPayment}
-              pagamentos={pdv.pagamentos}
-              onRemovePagamento={pdv.removePagamento}
-              restante={pdv.restante}
-              onFinalize={() => handleFinalize()}
-              isFinalizing={finalizarVenda.isPending}
-            />
-          )}
-
-          {pdv.mode !== 'payment' && pdv.items.length > 0 && (
-            <Button
-              onClick={() => {
-                pdv.setMode('payment');
-                setPaymentValue(String(pdv.restante.toFixed(2)));
+      {/* Main Content — Full height, 60/40 split */}
+      <div className="flex-1 flex min-h-0">
+        {/* Left — Search + Items (60%) */}
+        <div className="flex-[3] flex flex-col border-r border-border min-h-0">
+          {/* Search bar */}
+          <div className="p-3 border-b border-border/50">
+            <PDVSearch
+              ref={searchInputRef}
+              query={searchQuery}
+              onQueryChange={q => {
+                setSearchQuery(q);
+                if (pdv.mode !== 'search') pdv.setMode('search');
               }}
-              className="h-14 gradient-primary text-primary-foreground font-bold text-lg gap-2"
-            >
-              <Banknote className="w-5 h-5" />
-              Pagamento (p)
-            </Button>
+              onFocus={() => pdv.setMode('search')}
+              onClear={() => { setSearchQuery(''); pdv.setMode('normal'); }}
+              isSearchMode={pdv.mode === 'search'}
+              results={searchResults}
+              selectedIndex={searchSelectedIndex}
+              onSelectProduct={(produto) => {
+                pdv.addItem(produto, true);
+                setSearchQuery('');
+                searchInputRef.current?.focus();
+              }}
+            />
+          </div>
+
+          {/* Inline input (quantity/discount) */}
+          {(pdv.mode === 'quantity' || pdv.mode === 'discount') && pdv.selectedIndex >= 0 && (
+            <div className="px-3 pt-3">
+              <PDVInlineInput
+                ref={inputRef}
+                mode={pdv.mode}
+                productName={pdv.items[pdv.selectedIndex]?.produto.nome || ''}
+                value={inputValue}
+                onChange={setInputValue}
+                onConfirm={handleInlineConfirm}
+              />
+            </div>
           )}
 
-          <PDVShortcutsPanel />
+          {/* Items table */}
+          <div className="flex-1 p-3 min-h-0">
+            <PDVItemsTable
+              items={pdv.items}
+              selectedIndex={pdv.selectedIndex}
+              onSelectIndex={pdv.setSelectedIndex}
+              onRemoveItem={pdv.removeItem}
+            />
+          </div>
+        </div>
+
+        {/* Right — Summary + Payment (40%) */}
+        <div className="flex-[2] flex flex-col min-h-0 bg-muted/30">
+          <div className="flex-1 p-4 flex flex-col gap-4 overflow-auto">
+            <PDVCartSummary
+              items={pdv.items}
+              descontoGeral={pdv.descontoGeral}
+              total={pdv.total}
+            />
+
+            {pdv.mode === 'payment' && (
+              <PDVPaymentPanel
+                ref={paymentInputRef}
+                paymentForm={paymentForm}
+                onPaymentFormChange={setPaymentForm}
+                paymentValue={paymentValue}
+                onPaymentValueChange={setPaymentValue}
+                onAddPayment={handleAddPayment}
+                pagamentos={pdv.pagamentos}
+                onRemovePagamento={pdv.removePagamento}
+                restante={pdv.restante}
+                onFinalize={() => handleFinalize()}
+                isFinalizing={finalizarVenda.isPending}
+              />
+            )}
+
+            {pdv.mode !== 'payment' && pdv.items.length > 0 && (
+              <Button
+                onClick={() => {
+                  pdv.setMode('payment');
+                  setPaymentValue(String(pdv.restante.toFixed(2)));
+                }}
+                className="h-16 gradient-primary text-primary-foreground font-bold text-xl gap-3"
+              >
+                <Banknote className="w-6 h-6" />
+                Pagamento
+                <kbd className="ml-2 px-2 py-0.5 rounded bg-primary-foreground/20 text-sm font-mono">F4</kbd>
+              </Button>
+            )}
+          </div>
+
+          {/* Shortcuts — fixed at bottom */}
+          <div className="border-t border-border">
+            <PDVShortcutsPanel />
+          </div>
         </div>
       </div>
 
