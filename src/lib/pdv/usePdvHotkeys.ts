@@ -1,153 +1,97 @@
-import { useEffect, useCallback, RefObject } from 'react';
-import { toast } from 'sonner';
-import { PDVState } from './pdv.types';
-import { PDVAction, getRestante } from './pdv.reducer';
-import { Produto } from '@/hooks/useProdutos';
+import { useEffect } from 'react';
 
-interface UsePdvHotkeysParams {
-  state: PDVState;
-  dispatch: React.Dispatch<PDVAction>;
-  searchInputRef: RefObject<HTMLInputElement | null>;
-  // Search state (lives in shell for controlled input)
-  searchResults: Produto[];
-  searchSelectedIndex: number;
-  setSearchSelectedIndex: React.Dispatch<React.SetStateAction<number>>;
-  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
-  // Inline input (qty/discount)
-  inputValue: string;
-  setInputValue: React.Dispatch<React.SetStateAction<string>>;
-  // Payment
-  paymentValue: string;
-  setPaymentValue: React.Dispatch<React.SetStateAction<string>>;
-  // Cancel dialog
-  setShowConfirmCancel: React.Dispatch<React.SetStateAction<boolean>>;
-  // Help modal
-  setShowHelp: React.Dispatch<React.SetStateAction<boolean>>;
+export interface HotkeyHandlers {
+  onHelp: () => void;
+  onFocusSearch: () => void;
+  onFinalize: () => void;
+  onDiscount: () => void;
+  onQuantity: () => void;
+  onCustomer: () => void;
+  onCancel: () => void;
+  onRemoveItem: () => void;
+  onArrowUp: () => void;
+  onArrowDown: () => void;
+  onEnter: () => void;
 }
 
-export function usePdvHotkeys({
-  state, dispatch,
-  searchInputRef,
-  searchResults, searchSelectedIndex, setSearchSelectedIndex, setSearchQuery,
-  inputValue, setInputValue,
-  paymentValue, setPaymentValue,
-  setShowConfirmCancel,
-  setShowHelp,
-}: UsePdvHotkeysParams) {
-  const handler = useCallback((e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
-
-    // ── Global F-keys ──────────────────────────────────────
-    if (e.key === 'F1') {
-      e.preventDefault();
-      setShowHelp(prev => !prev);
-      return;
-    }
-
-    if (e.key === 'F2') {
-      e.preventDefault();
-      if (state.items.length > 0) {
-        if (state.selectedIndex < 0) dispatch({ type: 'SET_SELECTED_INDEX', index: 0 });
-        dispatch({ type: 'SET_MODE', mode: 'discount' });
-        setInputValue(String(state.items[Math.max(0, state.selectedIndex)]?.desconto || 0));
-      }
-      return;
-    }
-
-    if (e.key === 'F3') {
-      e.preventDefault();
-      toast.info('Busca de cliente será implementada em breve');
-      return;
-    }
-
-    if (e.key === 'F4') {
-      e.preventDefault();
-      if (state.items.length > 0) {
-        dispatch({ type: 'SET_MODE', mode: 'payment' });
-        setPaymentValue(String(getRestante(state).toFixed(2)));
-      }
-      return;
-    }
-
-    if (e.key === 'F6') {
-      e.preventDefault();
-      if (state.items.length > 0) {
-        if (state.selectedIndex < 0) dispatch({ type: 'SET_SELECTED_INDEX', index: 0 });
-        dispatch({ type: 'SET_MODE', mode: 'quantity' });
-        setInputValue(String(state.items[Math.max(0, state.selectedIndex)]?.qtd || 1));
-      }
-      return;
-    }
-
-    if (e.key === 'l' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      dispatch({ type: 'SET_MODE', mode: 'search' });
-      setSearchQuery('');
-      searchInputRef.current?.focus();
-      return;
-    }
-
-    // ── Search mode ────────────────────────────────────────
-    if (state.mode === 'search') {
-      if (e.key === 'Escape') { e.preventDefault(); dispatch({ type: 'SET_MODE', mode: 'normal' }); setSearchQuery(''); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); setSearchSelectedIndex(i => Math.min(i + 1, searchResults.length - 1)); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setSearchSelectedIndex(i => Math.max(i - 1, 0)); }
-      else if (e.key === 'Enter' && searchResults.length > 0) {
-        e.preventDefault();
-        dispatch({ type: 'ADD_ITEM', produto: searchResults[searchSelectedIndex], keepSearchMode: true });
-        setSearchQuery('');
-        setTimeout(() => searchInputRef.current?.focus(), 50);
-      }
-      return;
-    }
-
-    // ── Quantity mode ──────────────────────────────────────
-    if (state.mode === 'quantity') {
-      if (e.key === 'Escape') { e.preventDefault(); dispatch({ type: 'SET_MODE', mode: 'normal' }); setInputValue(''); }
-      else if (e.key === 'Enter') {
-        e.preventDefault();
-        const val = parseFloat(inputValue);
-        if (!isNaN(val) && state.selectedIndex >= 0) dispatch({ type: 'UPDATE_QUANTITY', index: state.selectedIndex, qtd: val });
-        setInputValue(''); dispatch({ type: 'SET_MODE', mode: 'normal' });
-      }
-      return;
-    }
-
-    // ── Discount mode ──────────────────────────────────────
-    if (state.mode === 'discount') {
-      if (e.key === 'Escape') { e.preventDefault(); dispatch({ type: 'SET_MODE', mode: 'normal' }); setInputValue(''); }
-      else if (e.key === 'Enter') {
-        e.preventDefault();
-        const val = parseFloat(inputValue);
-        if (!isNaN(val) && state.selectedIndex >= 0) dispatch({ type: 'APPLY_ITEM_DISCOUNT', index: state.selectedIndex, desconto: val });
-        setInputValue(''); dispatch({ type: 'SET_MODE', mode: 'normal' });
-      }
-      return;
-    }
-
-    // ── Payment mode ───────────────────────────────────────
-    if (state.mode === 'payment') {
-      if (e.key === 'Escape') { e.preventDefault(); dispatch({ type: 'SET_MODE', mode: 'normal' }); setPaymentValue(''); }
-      return;
-    }
-
-    // ── Normal mode ────────────────────────────────────────
-    if (isInput) {
-      if (e.key === 'Escape') { e.preventDefault(); dispatch({ type: 'SET_MODE', mode: 'normal' }); setSearchQuery(''); }
-      return;
-    }
-
-    if (e.key === 'Delete' && state.items.length > 0 && state.selectedIndex >= 0) {
-      e.preventDefault(); dispatch({ type: 'REMOVE_ITEM', index: state.selectedIndex });
-    }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); dispatch({ type: 'SET_SELECTED_INDEX', index: Math.min(state.selectedIndex + 1, state.items.length - 1) }); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); dispatch({ type: 'SET_SELECTED_INDEX', index: Math.max(state.selectedIndex - 1, 0) }); }
-    else if (e.key === 'Escape' && state.items.length > 0) { setShowConfirmCancel(true); }
-  }, [state, dispatch, searchResults, searchSelectedIndex, inputValue, paymentValue, searchInputRef, setSearchQuery, setSearchSelectedIndex, setInputValue, setPaymentValue, setShowConfirmCancel, setShowHelp]);
-
+/**
+ * PDV global hotkeys — zero dependencies, zero libs.
+ * F-keys always fire (even when typing in inputs).
+ * Arrow/Delete/Enter only fire outside inputs OR with Ctrl.
+ */
+export function usePdvHotkeys(h: HotkeyHandlers) {
   useEffect(() => {
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [handler]);
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable;
+
+      const hasCtrl = e.ctrlKey || e.metaKey;
+
+      // Ctrl+L always fires — focus search
+      if (hasCtrl && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        h.onFocusSearch();
+        return;
+      }
+
+      // F-keys always fire (even when typing)
+      switch (e.key) {
+        case 'F1':
+          e.preventDefault();
+          h.onHelp();
+          return;
+        case 'F2':
+          e.preventDefault();
+          h.onDiscount();
+          return;
+        case 'F3':
+          e.preventDefault();
+          h.onCustomer();
+          return;
+        case 'F4':
+          e.preventDefault();
+          h.onFinalize();
+          return;
+        case 'F6':
+          e.preventDefault();
+          h.onQuantity();
+          return;
+      }
+
+      // Escape always fires
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        h.onCancel();
+        return;
+      }
+
+      // Below keys: skip if user is typing in an input
+      if (isTyping) return;
+
+      switch (e.key) {
+        case 'Delete':
+          e.preventDefault();
+          h.onRemoveItem();
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          h.onArrowUp();
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          h.onArrowDown();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          h.onEnter();
+          break;
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [h]);
 }

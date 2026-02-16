@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useReducer, useCallback } from 'react';
+import { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
 import { ShoppingCart, Banknote, AlertTriangle, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -104,17 +104,6 @@ export default function PDV() {
     return () => clearTimeout(t);
   }, [state.mode]);
 
-  // ── Keyboard handler (extracted hook) ───────────────────
-  usePdvHotkeys({
-    state, dispatch,
-    searchInputRef,
-    searchResults, searchSelectedIndex, setSearchSelectedIndex, setSearchQuery,
-    inputValue, setInputValue,
-    paymentValue, setPaymentValue,
-    setShowConfirmCancel,
-    setShowHelp,
-  });
-
   // ── Payment handlers ────────────────────────────────────
   const handleAddPayment = useCallback(() => {
     const val = parseFloat(paymentValue);
@@ -155,6 +144,74 @@ export default function PDV() {
     setInputValue('');
     dispatch({ type: 'SET_MODE', mode: 'normal' });
   }, [inputValue, state.selectedIndex, state.mode]);
+
+  // ── Hotkey handlers (clean API) ─────────────────────────
+  const hotkeyHandlers = useMemo(() => ({
+    onHelp: () => setShowHelp(prev => !prev),
+    onFocusSearch: () => {
+      dispatch({ type: 'SET_MODE', mode: 'search' });
+      setSearchQuery('');
+      searchInputRef.current?.focus();
+    },
+    onFinalize: () => {
+      if (state.mode === 'payment') return; // already in payment
+      if (state.items.length > 0) {
+        dispatch({ type: 'SET_MODE', mode: 'payment' });
+        setPaymentValue(String(restante.toFixed(2)));
+      }
+    },
+    onDiscount: () => {
+      if (state.items.length > 0) {
+        if (state.selectedIndex < 0) dispatch({ type: 'SET_SELECTED_INDEX', index: 0 });
+        dispatch({ type: 'SET_MODE', mode: 'discount' });
+        setInputValue(String(state.items[Math.max(0, state.selectedIndex)]?.desconto || 0));
+      }
+    },
+    onQuantity: () => {
+      if (state.items.length > 0) {
+        if (state.selectedIndex < 0) dispatch({ type: 'SET_SELECTED_INDEX', index: 0 });
+        dispatch({ type: 'SET_MODE', mode: 'quantity' });
+        setInputValue(String(state.items[Math.max(0, state.selectedIndex)]?.qtd || 1));
+      }
+    },
+    onCustomer: () => {
+      toast.info('Busca de cliente será implementada em breve');
+    },
+    onCancel: () => {
+      if (state.mode === 'payment') { dispatch({ type: 'SET_MODE', mode: 'normal' }); setPaymentValue(''); }
+      else if (state.mode === 'quantity' || state.mode === 'discount') { dispatch({ type: 'SET_MODE', mode: 'normal' }); setInputValue(''); }
+      else if (state.mode === 'search') { dispatch({ type: 'SET_MODE', mode: 'normal' }); setSearchQuery(''); }
+      else if (state.items.length > 0) { setShowConfirmCancel(true); }
+    },
+    onRemoveItem: () => {
+      if (state.items.length > 0 && state.selectedIndex >= 0) {
+        dispatch({ type: 'REMOVE_ITEM', index: state.selectedIndex });
+      }
+    },
+    onArrowUp: () => {
+      if (state.mode === 'search') {
+        setSearchSelectedIndex(i => Math.max(i - 1, 0));
+      } else {
+        dispatch({ type: 'SET_SELECTED_INDEX', index: Math.max(state.selectedIndex - 1, 0) });
+      }
+    },
+    onArrowDown: () => {
+      if (state.mode === 'search') {
+        setSearchSelectedIndex(i => Math.min(i + 1, searchResults.length - 1));
+      } else {
+        dispatch({ type: 'SET_SELECTED_INDEX', index: Math.min(state.selectedIndex + 1, state.items.length - 1) });
+      }
+    },
+    onEnter: () => {
+      if (state.mode === 'search' && searchResults.length > 0) {
+        dispatch({ type: 'ADD_ITEM', produto: searchResults[searchSelectedIndex], keepSearchMode: true });
+        setSearchQuery('');
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      }
+    },
+  }), [state, restante, searchResults, searchSelectedIndex]);
+
+  usePdvHotkeys(hotkeyHandlers);
 
   // ── Render ──────────────────────────────────────────────
   return (
