@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import {
   modeLabel, modeColor,
   pdvReducer, initialPDVState,
-  getTotal, getTotalPago, getRestante,
+  getTotal, getTotalPago, getRestante, getDescontoGeral,
   useFinalizarVenda,
   usePdvHotkeys,
   Pagamento,
@@ -46,6 +46,7 @@ export default function PDV() {
   const total = getTotal(state);
   const totalPago = getTotalPago(state);
   const restante = getRestante(state);
+  const descontoGeral = getDescontoGeral(state);
 
   // ── Local UI state (not business logic) ─────────────────
   const [depositoId, setDepositoId] = useState('');
@@ -135,7 +136,7 @@ export default function PDV() {
 
     await finalizarVenda.mutateAsync({
       items: state.items, pagamentos: pags,
-      descontoGeral: state.descontoGeral, depositoId,
+      descontoGeral, depositoId,
     });
     dispatch({ type: 'CLEAR_SALE' });
   }, [state, depositoId, finalizarVenda]);
@@ -241,7 +242,7 @@ export default function PDV() {
         {/* Right — Summary + Payment */}
         <div className="flex-[2] flex flex-col min-h-0 bg-muted/30">
           <div className="flex-1 p-4 flex flex-col gap-4 overflow-auto">
-            <PDVCartSummary items={state.items} descontoGeral={state.descontoGeral} total={total} />
+            <PDVCartSummary items={state.items} descontoGeral={descontoGeral} total={total} />
 
             {state.mode === 'payment' && (
               <PDVPaymentPanel
