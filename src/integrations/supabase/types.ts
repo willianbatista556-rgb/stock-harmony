@@ -865,6 +865,18 @@ export type Database = {
       }
     }
     Functions: {
+      finalizar_venda: {
+        Args: {
+          p_deposito_id: string
+          p_desconto: number
+          p_empresa_id: string
+          p_itens: Json
+          p_pagamentos: Json
+          p_total: number
+          p_usuario_id: string
+        }
+        Returns: string
+      }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
