@@ -101,12 +101,21 @@ export default function PDV() {
     return () => clearTimeout(timer);
   }, [pdv.mode]);
 
-  // === Keyboard handler (F-key based) ===
+  // === Keyboard handler (padrão ERP brasileiro) ===
   const handleGlobalKeyDown = useCallback((e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
     const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
 
-    // F-keys work globally regardless of mode or focus
+    // --- Global F-keys (work in any mode) ---
+
+    // F1 = Ajuda (toggle shortcuts visibility — for now just toast)
+    if (e.key === 'F1') {
+      e.preventDefault();
+      toast.info('Atalhos: F2=Desconto | F3=Cliente | F4=Finalizar | F6=Qtd | Ctrl+L=Busca | Del=Remover | Esc=Cancelar');
+      return;
+    }
+
+    // F2 = Desconto no item selecionado
     if (e.key === 'F2') {
       e.preventDefault();
       if (pdv.items.length > 0) {
@@ -116,6 +125,15 @@ export default function PDV() {
       }
       return;
     }
+
+    // F3 = Buscar cliente (placeholder — futuro)
+    if (e.key === 'F3') {
+      e.preventDefault();
+      toast.info('Busca de cliente será implementada em breve');
+      return;
+    }
+
+    // F4 = Finalizar venda (abre pagamento)
     if (e.key === 'F4') {
       e.preventDefault();
       if (pdv.items.length > 0) {
@@ -124,13 +142,24 @@ export default function PDV() {
       }
       return;
     }
-    if (e.key === 'F3') {
+
+    // F6 = Alterar quantidade do item selecionado
+    if (e.key === 'F6') {
       e.preventDefault();
       if (pdv.items.length > 0) {
         if (pdv.selectedIndex < 0) pdv.setSelectedIndex(0);
         pdv.setMode('quantity');
         setInputValue(String(pdv.items[Math.max(0, pdv.selectedIndex)]?.qtd || 1));
       }
+      return;
+    }
+
+    // Ctrl+L = Foco na busca
+    if (e.key === 'l' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      pdv.setMode('search');
+      setSearchQuery('');
+      searchInputRef.current?.focus();
       return;
     }
 
@@ -180,13 +209,11 @@ export default function PDV() {
 
     // --- Normal mode ---
     if (isInput) {
-      // If typing in search, let it through
       if (e.key === 'Escape') { e.preventDefault(); pdv.setMode('normal'); setSearchQuery(''); }
       return;
     }
 
-    if (e.key === '/' || e.key === 'F1') { e.preventDefault(); pdv.setMode('search'); setSearchQuery(''); }
-    else if (e.key === 'Delete' && pdv.items.length > 0 && pdv.selectedIndex >= 0) {
+    if (e.key === 'Delete' && pdv.items.length > 0 && pdv.selectedIndex >= 0) {
       e.preventDefault(); pdv.removeItem(pdv.selectedIndex);
     }
     else if (e.key === 'ArrowDown') { e.preventDefault(); pdv.setSelectedIndex(i => Math.min(i + 1, pdv.items.length - 1)); }
@@ -363,7 +390,7 @@ export default function PDV() {
                 className="h-16 gradient-primary text-primary-foreground font-bold text-xl gap-3"
               >
                 <Banknote className="w-6 h-6" />
-                Pagamento
+                Finalizar Venda
                 <kbd className="ml-2 px-2 py-0.5 rounded bg-primary-foreground/20 text-sm font-mono">F4</kbd>
               </Button>
             )}

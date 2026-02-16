@@ -2,10 +2,12 @@ import { memo } from 'react';
 import { Keyboard } from 'lucide-react';
 
 const shortcuts = [
-  { key: 'F1', label: 'Buscar' },
+  { key: 'F1', label: 'Ajuda' },
   { key: 'F2', label: 'Desconto' },
-  { key: 'F3', label: 'Qtd' },
-  { key: 'F4', label: 'Pagar' },
+  { key: 'F3', label: 'Cliente' },
+  { key: 'F4', label: 'Finalizar' },
+  { key: 'F6', label: 'Qtd' },
+  { key: 'Ctrl+L', label: 'Busca' },
   { key: 'Del', label: 'Remover' },
   { key: 'Esc', label: 'Cancelar' },
   { key: '↑↓', label: 'Navegar' },
