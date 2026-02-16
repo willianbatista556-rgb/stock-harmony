@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import {
   modeLabel, modeColor,
   pdvReducer, initialPDVState,
-  getTotal, getTotalPago, getRestante, getDescontoGeral,
+  getTotal, getTotalPago, getRestante, getDescontoGeral, getSubtotalBruto,
   useFinalizarVenda,
   usePdvHotkeys,
   Pagamento,
@@ -135,8 +135,13 @@ export default function PDV() {
     if (pags.length === 0) { toast.error('Adicione pelo menos um pagamento'); return; }
 
     await finalizarVenda.mutateAsync({
-      items: state.items, pagamentos: pags,
-      descontoGeral, depositoId,
+      items: state.items,
+      pagamentos: pags,
+      descontoGeral,
+      depositoId,
+      customer: state.customer,
+      caixaId: caixaAberto?.id || null,
+      subtotal: getSubtotalBruto(state),
     });
     dispatch({ type: 'CLEAR_SALE' });
   }, [state, depositoId, finalizarVenda]);
