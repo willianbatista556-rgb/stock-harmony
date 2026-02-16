@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
-import { ShoppingCart, Banknote, AlertTriangle, LogOut } from 'lucide-react';
+import { ShoppingCart, Banknote, AlertTriangle, LogOut, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,14 +15,14 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
-// PDV architecture: types, reducer, api, hotkeys
+// PDV architecture
 import {
   modeLabel, modeColor,
   pdvReducer, initialPDVState,
   getTotal, getTotalPago, getRestante, getDescontoGeral, getSubtotalBruto,
   useFinalizarVenda,
   usePdvHotkeys,
-  Pagamento,
+  Pagamento, PDVDiscount,
 } from '@/lib/pdv';
 
 // PDV UI components
@@ -33,6 +33,9 @@ import { PDVCartSummary } from '@/components/pdv/PDVCartSummary';
 import { PDVPaymentPanel } from '@/components/pdv/PDVPaymentPanel';
 import { PDVShortcutsPanel } from '@/components/pdv/PDVShortcutsPanel';
 import { HotkeysHelpModal } from '@/components/pdv/HotkeysHelpModal';
+import { CustomerModal } from '@/components/pdv/CustomerModal';
+import { DiscountModal } from '@/components/pdv/DiscountModal';
+import { ReceiptModal } from '@/components/pdv/ReceiptModal';
 
 export default function PDV() {
   const { data: produtos = [] } = useProdutos();
@@ -47,8 +50,9 @@ export default function PDV() {
   const totalPago = getTotalPago(state);
   const restante = getRestante(state);
   const descontoGeral = getDescontoGeral(state);
+  const subtotalBruto = getSubtotalBruto(state);
 
-  // ── Local UI state (not business logic) ─────────────────
+  // ── Local UI state ──────────────────────────────────────
   const [depositoId, setDepositoId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Produto[]>([]);
@@ -58,6 +62,17 @@ export default function PDV() {
   const [paymentValue, setPaymentValue] = useState('');
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showCustomer, setShowCustomer] = useState(false);
+  const [showDiscount, setShowDiscount] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastSale, setLastSale] = useState<{
+    items: typeof state.items;
+    pagamentos: Pagamento[];
+    customer: typeof state.customer;
+    subtotal: number;
+    desconto: number;
+    total: number;
+  } | null>(null);
 
   // ── Refs ────────────────────────────────────────────────
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -104,7 +119,7 @@ export default function PDV() {
     return () => clearTimeout(t);
   }, [state.mode]);
 
-  // ── Payment handlers ────────────────────────────────────
+  // ── Handlers ────────────────────────────────────────────
   const handleAddPayment = useCallback(() => {
     const val = parseFloat(paymentValue);
     if (isNaN(val) || val <= 0) { toast.error('Valor inválido'); return; }
@@ -123,6 +138,16 @@ export default function PDV() {
     if (!depositoId) { toast.error('Selecione um depósito'); return; }
     if (pags.length === 0) { toast.error('Adicione pelo menos um pagamento'); return; }
 
+    // Save for receipt before clearing
+    const saleData = {
+      items: [...state.items],
+      pagamentos: pags,
+      customer: state.customer,
+      subtotal: subtotalBruto,
+      desconto: descontoGeral,
+      total,
+    };
+
     await finalizarVenda.mutateAsync({
       items: state.items,
       pagamentos: pags,
@@ -130,10 +155,13 @@ export default function PDV() {
       depositoId,
       customer: state.customer,
       caixaId: caixaAberto?.id || null,
-      subtotal: getSubtotalBruto(state),
+      subtotal: subtotalBruto,
     });
+
+    setLastSale(saleData);
+    setShowReceipt(true);
     dispatch({ type: 'CLEAR_SALE' });
-  }, [state, depositoId, finalizarVenda]);
+  }, [state, depositoId, finalizarVenda, subtotalBruto, descontoGeral, total, caixaAberto]);
 
   const handleInlineConfirm = useCallback(() => {
     const val = parseFloat(inputValue);
@@ -145,7 +173,7 @@ export default function PDV() {
     dispatch({ type: 'SET_MODE', mode: 'normal' });
   }, [inputValue, state.selectedIndex, state.mode]);
 
-  // ── Hotkey handlers (clean API) ─────────────────────────
+  // ── Hotkey handlers ─────────────────────────────────────
   const hotkeyHandlers = useMemo(() => ({
     onHelp: () => setShowHelp(prev => !prev),
     onFocusSearch: () => {
@@ -154,7 +182,7 @@ export default function PDV() {
       searchInputRef.current?.focus();
     },
     onFinalize: () => {
-      if (state.mode === 'payment') return; // already in payment
+      if (state.mode === 'payment') return;
       if (state.items.length > 0) {
         dispatch({ type: 'SET_MODE', mode: 'payment' });
         setPaymentValue(String(restante.toFixed(2)));
@@ -162,9 +190,7 @@ export default function PDV() {
     },
     onDiscount: () => {
       if (state.items.length > 0) {
-        if (state.selectedIndex < 0) dispatch({ type: 'SET_SELECTED_INDEX', index: 0 });
-        dispatch({ type: 'SET_MODE', mode: 'discount' });
-        setInputValue(String(state.items[Math.max(0, state.selectedIndex)]?.desconto || 0));
+        setShowDiscount(true);
       }
     },
     onQuantity: () => {
@@ -174,14 +200,24 @@ export default function PDV() {
         setInputValue(String(state.items[Math.max(0, state.selectedIndex)]?.qtd || 1));
       }
     },
-    onCustomer: () => {
-      toast.info('Busca de cliente será implementada em breve');
-    },
+    onCustomer: () => setShowCustomer(true),
     onCancel: () => {
-      if (state.mode === 'payment') { dispatch({ type: 'SET_MODE', mode: 'normal' }); setPaymentValue(''); }
-      else if (state.mode === 'quantity' || state.mode === 'discount') { dispatch({ type: 'SET_MODE', mode: 'normal' }); setInputValue(''); }
-      else if (state.mode === 'search') { dispatch({ type: 'SET_MODE', mode: 'normal' }); setSearchQuery(''); }
-      else if (state.items.length > 0) { setShowConfirmCancel(true); }
+      if (showCustomer || showDiscount || showHelp) {
+        setShowCustomer(false);
+        setShowDiscount(false);
+        setShowHelp(false);
+      } else if (state.mode === 'payment') {
+        dispatch({ type: 'SET_MODE', mode: 'normal' });
+        setPaymentValue('');
+      } else if (state.mode === 'quantity' || state.mode === 'discount') {
+        dispatch({ type: 'SET_MODE', mode: 'normal' });
+        setInputValue('');
+      } else if (state.mode === 'search') {
+        dispatch({ type: 'SET_MODE', mode: 'normal' });
+        setSearchQuery('');
+      } else if (state.items.length > 0) {
+        setShowConfirmCancel(true);
+      }
     },
     onRemoveItem: () => {
       if (state.items.length > 0 && state.selectedIndex >= 0) {
@@ -189,18 +225,12 @@ export default function PDV() {
       }
     },
     onArrowUp: () => {
-      if (state.mode === 'search') {
-        setSearchSelectedIndex(i => Math.max(i - 1, 0));
-      } else {
-        dispatch({ type: 'SET_SELECTED_INDEX', index: Math.max(state.selectedIndex - 1, 0) });
-      }
+      if (state.mode === 'search') setSearchSelectedIndex(i => Math.max(i - 1, 0));
+      else dispatch({ type: 'SET_SELECTED_INDEX', index: Math.max(state.selectedIndex - 1, 0) });
     },
     onArrowDown: () => {
-      if (state.mode === 'search') {
-        setSearchSelectedIndex(i => Math.min(i + 1, searchResults.length - 1));
-      } else {
-        dispatch({ type: 'SET_SELECTED_INDEX', index: Math.min(state.selectedIndex + 1, state.items.length - 1) });
-      }
+      if (state.mode === 'search') setSearchSelectedIndex(i => Math.min(i + 1, searchResults.length - 1));
+      else dispatch({ type: 'SET_SELECTED_INDEX', index: Math.min(state.selectedIndex + 1, state.items.length - 1) });
     },
     onEnter: () => {
       if (state.mode === 'search' && searchResults.length > 0) {
@@ -209,7 +239,7 @@ export default function PDV() {
         setTimeout(() => searchInputRef.current?.focus(), 50);
       }
     },
-  }), [state, restante, searchResults, searchSelectedIndex]);
+  }), [state, restante, searchResults, searchSelectedIndex, showCustomer, showDiscount, showHelp]);
 
   usePdvHotkeys(hotkeyHandlers);
 
@@ -236,6 +266,21 @@ export default function PDV() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Customer indicator */}
+          <button
+            onClick={() => setShowCustomer(true)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors border',
+              state.customer
+                ? 'border-primary/30 bg-primary/8 text-primary font-medium'
+                : 'border-border text-muted-foreground hover:text-foreground hover:border-border'
+            )}
+          >
+            <User className="w-3.5 h-3.5" />
+            {state.customer ? state.customer.nome : 'Cliente'}
+            <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px] font-bold">F3</kbd>
+          </button>
+
           <Select value={depositoId} onValueChange={setDepositoId}>
             <SelectTrigger className="w-[160px] h-8 text-sm">
               <SelectValue placeholder="Depósito" />
@@ -343,7 +388,7 @@ export default function PDV() {
         </div>
       </div>
 
-      {/* Cancel Confirmation */}
+      {/* Modals */}
       <Dialog open={showConfirmCancel} onOpenChange={setShowConfirmCancel}>
         <DialogContent className="bg-card max-w-sm">
           <DialogHeader>
@@ -361,8 +406,35 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      {/* Hotkeys Help Modal */}
       <HotkeysHelpModal open={showHelp} onOpenChange={setShowHelp} />
+
+      <CustomerModal
+        open={showCustomer}
+        onOpenChange={setShowCustomer}
+        currentCustomer={state.customer}
+        onSelect={(customer) => dispatch({ type: 'SET_CUSTOMER', customer })}
+      />
+
+      <DiscountModal
+        open={showDiscount}
+        onOpenChange={setShowDiscount}
+        currentDiscount={state.discount}
+        subtotal={subtotalBruto}
+        onApply={(discount) => dispatch({ type: 'SET_DISCOUNT', discount })}
+      />
+
+      {lastSale && (
+        <ReceiptModal
+          open={showReceipt}
+          onOpenChange={setShowReceipt}
+          items={lastSale.items}
+          pagamentos={lastSale.pagamentos}
+          customer={lastSale.customer}
+          subtotal={lastSale.subtotal}
+          desconto={lastSale.desconto}
+          total={lastSale.total}
+        />
+      )}
     </div>
   );
 }
