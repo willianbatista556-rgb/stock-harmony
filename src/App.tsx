@@ -9,6 +9,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Produtos from "./pages/Produtos";
+import PDV from "./pages/PDV";
 import Movimentacoes from "./pages/Movimentacoes";
 import Depositos from "./pages/Depositos";
 import Categorias from "./pages/Categorias";
@@ -72,6 +73,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <Fornecedores />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/pdv"
+              element={
+                <AppLayout>
+                  <PDV />
                 </AppLayout>
               }
             />

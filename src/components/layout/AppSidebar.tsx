@@ -13,7 +13,8 @@ import {
   ChevronRight,
   LogOut,
   Building2,
-  FolderTree
+  FolderTree,
+  Monitor
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,6 +24,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 const menuItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: Monitor, label: 'PDV', path: '/pdv' },
   { icon: Package, label: 'Produtos', path: '/produtos' },
   { icon: FolderTree, label: 'Categorias', path: '/categorias' },
   { icon: Warehouse, label: 'Depósitos', path: '/depositos' },
