@@ -1,0 +1,135 @@
+import { Produto } from '@/hooks/useProdutos';
+import { PDVState, PDVItem, Pagamento, PDVMode } from './pdv.types';
+
+// ── Action types ──────────────────────────────────────────────
+export type PDVAction =
+  | { type: 'ADD_ITEM'; produto: Produto; keepSearchMode?: boolean }
+  | { type: 'REMOVE_ITEM'; index: number }
+  | { type: 'UPDATE_QUANTITY'; index: number; qtd: number }
+  | { type: 'APPLY_ITEM_DISCOUNT'; index: number; desconto: number }
+  | { type: 'SET_SELECTED_INDEX'; index: number }
+  | { type: 'SET_MODE'; mode: PDVMode }
+  | { type: 'ADD_PAGAMENTO'; pagamento: Pagamento }
+  | { type: 'REMOVE_PAGAMENTO'; index: number }
+  | { type: 'SET_DESCONTO_GERAL'; valor: number }
+  | { type: 'CLEAR_SALE' };
+
+// ── Initial state ─────────────────────────────────────────────
+export const initialPDVState: PDVState = {
+  items: [],
+  selectedIndex: -1,
+  mode: 'normal',
+  pagamentos: [],
+  descontoGeral: 0,
+  idCounter: 0,
+};
+
+// ── Helper: recalculate subtotal ──────────────────────────────
+function calcSubtotal(item: PDVItem): number {
+  return item.qtd * item.preco_unit - item.desconto;
+}
+
+// ── Reducer ───────────────────────────────────────────────────
+export function pdvReducer(state: PDVState, action: PDVAction): PDVState {
+  switch (action.type) {
+    case 'ADD_ITEM': {
+      const existing = state.items.find(i => i.produto.id === action.produto.id);
+      if (existing) {
+        const items = state.items.map(i =>
+          i.produto.id === action.produto.id
+            ? { ...i, qtd: i.qtd + 1, subtotal: (i.qtd + 1) * i.preco_unit - i.desconto }
+            : i
+        );
+        return {
+          ...state,
+          items,
+          mode: action.keepSearchMode ? state.mode : 'normal',
+        };
+      }
+      const newId = state.idCounter + 1;
+      const newItem: PDVItem = {
+        id: `pdv-${newId}`,
+        produto: action.produto,
+        qtd: 1,
+        preco_unit: action.produto.preco_venda || 0,
+        desconto: 0,
+        subtotal: action.produto.preco_venda || 0,
+      };
+      return {
+        ...state,
+        items: [...state.items, newItem],
+        selectedIndex: state.items.length,
+        idCounter: newId,
+        mode: action.keepSearchMode ? state.mode : 'normal',
+      };
+    }
+
+    case 'REMOVE_ITEM': {
+      const items = state.items.filter((_, i) => i !== action.index);
+      return {
+        ...state,
+        items,
+        selectedIndex: Math.min(Math.max(0, state.selectedIndex - (action.index <= state.selectedIndex ? 1 : 0)), items.length - 1),
+      };
+    }
+
+    case 'UPDATE_QUANTITY': {
+      if (action.qtd <= 0) {
+        return pdvReducer(state, { type: 'REMOVE_ITEM', index: action.index });
+      }
+      return {
+        ...state,
+        items: state.items.map((item, i) =>
+          i === action.index
+            ? { ...item, qtd: action.qtd, subtotal: calcSubtotal({ ...item, qtd: action.qtd }) }
+            : item
+        ),
+      };
+    }
+
+    case 'APPLY_ITEM_DISCOUNT': {
+      return {
+        ...state,
+        items: state.items.map((item, i) =>
+          i === action.index
+            ? { ...item, desconto: action.desconto, subtotal: calcSubtotal({ ...item, desconto: action.desconto }) }
+            : item
+        ),
+      };
+    }
+
+    case 'SET_SELECTED_INDEX':
+      return { ...state, selectedIndex: action.index };
+
+    case 'SET_MODE':
+      return { ...state, mode: action.mode };
+
+    case 'ADD_PAGAMENTO':
+      return { ...state, pagamentos: [...state.pagamentos, action.pagamento] };
+
+    case 'REMOVE_PAGAMENTO':
+      return { ...state, pagamentos: state.pagamentos.filter((_, i) => i !== action.index) };
+
+    case 'SET_DESCONTO_GERAL':
+      return { ...state, descontoGeral: action.valor };
+
+    case 'CLEAR_SALE':
+      return { ...initialPDVState };
+
+    default:
+      return state;
+  }
+}
+
+// ── Computed selectors ────────────────────────────────────────
+export function getTotal(state: PDVState): number {
+  return state.items.reduce((sum, item) => sum + item.subtotal, 0) - state.descontoGeral;
+}
+
+export function getTotalPago(state: PDVState): number {
+  return state.pagamentos.reduce((sum, p) => sum + p.valor, 0);
+}
+
+export function getRestante(state: PDVState): number {
+  return Math.max(0, getTotal(state) - getTotalPago(state));
+}

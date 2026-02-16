@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useReducer, useCallback } from 'react';
 import { ShoppingCart, Banknote, AlertTriangle, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useProdutos, Produto } from '@/hooks/useProdutos';
 import { useDepositos } from '@/hooks/useDepositos';
-import { usePDV, useFinalizarVenda, PDVMode, Pagamento } from '@/hooks/usePDV';
 import { useCaixaAberto } from '@/hooks/useCaixa';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -16,67 +15,71 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 
+// PDV architecture: types, reducer, api, hotkeys
+import {
+  modeLabel, modeColor,
+  pdvReducer, initialPDVState,
+  getTotal, getTotalPago, getRestante,
+  useFinalizarVenda,
+  usePdvHotkeys,
+  Pagamento,
+} from '@/lib/pdv';
+
+// PDV UI components
 import { PDVSearch } from '@/components/pdv/PDVSearch';
 import { PDVInlineInput } from '@/components/pdv/PDVInlineInput';
 import { PDVItemsTable } from '@/components/pdv/PDVItemsTable';
 import { PDVCartSummary } from '@/components/pdv/PDVCartSummary';
 import { PDVPaymentPanel } from '@/components/pdv/PDVPaymentPanel';
 import { PDVShortcutsPanel } from '@/components/pdv/PDVShortcutsPanel';
-
-const modeLabel: Record<PDVMode, string> = {
-  normal: 'PRONTO', search: 'BUSCA', quantity: 'QUANTIDADE',
-  discount: 'DESCONTO', payment: 'PAGAMENTO',
-};
-
-const modeColor: Record<PDVMode, string> = {
-  normal: 'bg-success text-success-foreground',
-  search: 'bg-primary text-primary-foreground',
-  quantity: 'bg-warning text-warning-foreground',
-  discount: 'bg-accent text-accent-foreground',
-  payment: 'bg-success text-success-foreground',
-};
+import { HotkeysHelpModal } from '@/components/pdv/HotkeysHelpModal';
 
 export default function PDV() {
   const { data: produtos = [] } = useProdutos();
   const { data: depositos = [] } = useDepositos();
   const finalizarVenda = useFinalizarVenda();
   const navigate = useNavigate();
+  const { data: caixaAberto } = useCaixaAberto();
 
+  // ── Central state (useReducer) ──────────────────────────
+  const [state, dispatch] = useReducer(pdvReducer, initialPDVState);
+  const total = getTotal(state);
+  const totalPago = getTotalPago(state);
+  const restante = getRestante(state);
+
+  // ── Local UI state (not business logic) ─────────────────
   const [depositoId, setDepositoId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Produto[]>([]);
   const [searchSelectedIndex, setSearchSelectedIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
-  const [paymentForm, setPaymentForm] = useState<'dinheiro' | 'credito' | 'debito' | 'pix'>('dinheiro');
+  const [paymentForm, setPaymentForm] = useState<Pagamento['forma']>('dinheiro');
   const [paymentValue, setPaymentValue] = useState('');
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
+  // ── Refs ────────────────────────────────────────────────
   const searchInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const paymentInputRef = useRef<HTMLInputElement>(null);
 
-  const pdv = usePDV();
-  const { data: caixaAberto } = useCaixaAberto();
-
-  // Auto-select first deposit
+  // ── Auto-select first deposit ───────────────────────────
   useEffect(() => {
-    if (depositos.length > 0 && !depositoId) {
-      setDepositoId(depositos[0].id);
-    }
+    if (depositos.length > 0 && !depositoId) setDepositoId(depositos[0].id);
   }, [depositos, depositoId]);
 
-  // Auto-focus search on mount (barcode scanner ready)
+  // ── Auto-focus search on mount ──────────────────────────
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const t = setTimeout(() => {
       searchInputRef.current?.focus();
-      pdv.setMode('search');
+      dispatch({ type: 'SET_MODE', mode: 'search' });
     }, 100);
-    return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => clearTimeout(t);
+  }, []);
 
-  // Search products (client-side filtering — instant)
+  // ── Client-side product search ──────────────────────────
   useEffect(() => {
-    if (pdv.mode === 'search' && searchQuery.trim()) {
+    if (state.mode === 'search' && searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const results = produtos.filter(p =>
         p.nome.toLowerCase().includes(q) ||
@@ -88,190 +91,77 @@ export default function PDV() {
     } else {
       setSearchResults([]);
     }
-  }, [searchQuery, produtos, pdv.mode]);
+  }, [searchQuery, produtos, state.mode]);
 
-  // Focus management per mode
+  // ── Focus management per mode ───────────────────────────
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pdv.mode === 'search') searchInputRef.current?.focus();
-      else if (pdv.mode === 'quantity' || pdv.mode === 'discount') inputRef.current?.focus();
-      else if (pdv.mode === 'payment') paymentInputRef.current?.focus();
-      else if (pdv.mode === 'normal') searchInputRef.current?.focus();
+    const t = setTimeout(() => {
+      if (state.mode === 'search' || state.mode === 'normal') searchInputRef.current?.focus();
+      else if (state.mode === 'quantity' || state.mode === 'discount') inputRef.current?.focus();
+      else if (state.mode === 'payment') paymentInputRef.current?.focus();
     }, 50);
-    return () => clearTimeout(timer);
-  }, [pdv.mode]);
+    return () => clearTimeout(t);
+  }, [state.mode]);
 
-  // === Keyboard handler (padrão ERP brasileiro) ===
-  const handleGlobalKeyDown = useCallback((e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+  // ── Keyboard handler (extracted hook) ───────────────────
+  usePdvHotkeys({
+    state, dispatch,
+    searchInputRef,
+    searchResults, searchSelectedIndex, setSearchSelectedIndex, setSearchQuery,
+    inputValue, setInputValue,
+    paymentValue, setPaymentValue,
+    setShowConfirmCancel,
+    setShowHelp,
+  });
 
-    // --- Global F-keys (work in any mode) ---
-
-    // F1 = Ajuda (toggle shortcuts visibility — for now just toast)
-    if (e.key === 'F1') {
-      e.preventDefault();
-      toast.info('Atalhos: F2=Desconto | F3=Cliente | F4=Finalizar | F6=Qtd | Ctrl+L=Busca | Del=Remover | Esc=Cancelar');
-      return;
-    }
-
-    // F2 = Desconto no item selecionado
-    if (e.key === 'F2') {
-      e.preventDefault();
-      if (pdv.items.length > 0) {
-        if (pdv.selectedIndex < 0) pdv.setSelectedIndex(0);
-        pdv.setMode('discount');
-        setInputValue(String(pdv.items[Math.max(0, pdv.selectedIndex)]?.desconto || 0));
-      }
-      return;
-    }
-
-    // F3 = Buscar cliente (placeholder — futuro)
-    if (e.key === 'F3') {
-      e.preventDefault();
-      toast.info('Busca de cliente será implementada em breve');
-      return;
-    }
-
-    // F4 = Finalizar venda (abre pagamento)
-    if (e.key === 'F4') {
-      e.preventDefault();
-      if (pdv.items.length > 0) {
-        pdv.setMode('payment');
-        setPaymentValue(String(pdv.restante.toFixed(2)));
-      }
-      return;
-    }
-
-    // F6 = Alterar quantidade do item selecionado
-    if (e.key === 'F6') {
-      e.preventDefault();
-      if (pdv.items.length > 0) {
-        if (pdv.selectedIndex < 0) pdv.setSelectedIndex(0);
-        pdv.setMode('quantity');
-        setInputValue(String(pdv.items[Math.max(0, pdv.selectedIndex)]?.qtd || 1));
-      }
-      return;
-    }
-
-    // Ctrl+L = Foco na busca
-    if (e.key === 'l' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      pdv.setMode('search');
-      setSearchQuery('');
-      searchInputRef.current?.focus();
-      return;
-    }
-
-    // --- Search mode ---
-    if (pdv.mode === 'search') {
-      if (e.key === 'Escape') { e.preventDefault(); pdv.setMode('normal'); setSearchQuery(''); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); setSearchSelectedIndex(i => Math.min(i + 1, searchResults.length - 1)); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setSearchSelectedIndex(i => Math.max(i - 1, 0)); }
-      else if (e.key === 'Enter' && searchResults.length > 0) {
-        e.preventDefault();
-        pdv.addItem(searchResults[searchSelectedIndex], true);
-        setSearchQuery('');
-        setTimeout(() => searchInputRef.current?.focus(), 50);
-      }
-      return;
-    }
-
-    // --- Quantity mode ---
-    if (pdv.mode === 'quantity') {
-      if (e.key === 'Escape') { e.preventDefault(); pdv.setMode('normal'); setInputValue(''); }
-      else if (e.key === 'Enter') {
-        e.preventDefault();
-        const val = parseFloat(inputValue);
-        if (!isNaN(val) && pdv.selectedIndex >= 0) pdv.updateQuantity(pdv.selectedIndex, val);
-        setInputValue(''); pdv.setMode('normal');
-      }
-      return;
-    }
-
-    // --- Discount mode ---
-    if (pdv.mode === 'discount') {
-      if (e.key === 'Escape') { e.preventDefault(); pdv.setMode('normal'); setInputValue(''); }
-      else if (e.key === 'Enter') {
-        e.preventDefault();
-        const val = parseFloat(inputValue);
-        if (!isNaN(val) && pdv.selectedIndex >= 0) pdv.applyItemDiscount(pdv.selectedIndex, val);
-        setInputValue(''); pdv.setMode('normal');
-      }
-      return;
-    }
-
-    // --- Payment mode ---
-    if (pdv.mode === 'payment') {
-      if (e.key === 'Escape') { e.preventDefault(); pdv.setMode('normal'); setPaymentValue(''); }
-      return;
-    }
-
-    // --- Normal mode ---
-    if (isInput) {
-      if (e.key === 'Escape') { e.preventDefault(); pdv.setMode('normal'); setSearchQuery(''); }
-      return;
-    }
-
-    if (e.key === 'Delete' && pdv.items.length > 0 && pdv.selectedIndex >= 0) {
-      e.preventDefault(); pdv.removeItem(pdv.selectedIndex);
-    }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); pdv.setSelectedIndex(i => Math.min(i + 1, pdv.items.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); pdv.setSelectedIndex(i => Math.max(i - 1, 0)); }
-    else if (e.key === 'Escape' && pdv.items.length > 0) { setShowConfirmCancel(true); }
-  }, [pdv, searchResults, searchSelectedIndex, inputValue]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [handleGlobalKeyDown]);
-
-  // === Payment handlers ===
+  // ── Payment handlers ────────────────────────────────────
   const handleAddPayment = useCallback(() => {
     const val = parseFloat(paymentValue);
     if (isNaN(val) || val <= 0) { toast.error('Valor inválido'); return; }
-    const troco = paymentForm === 'dinheiro' && val > pdv.restante ? val - pdv.restante : 0;
-    pdv.addPagamento({ forma: paymentForm, valor: val, troco });
+    const troco = paymentForm === 'dinheiro' && val > restante ? val - restante : 0;
+    const pagamento: Pagamento = { forma: paymentForm, valor: val, troco };
+    dispatch({ type: 'ADD_PAGAMENTO', pagamento });
     setPaymentValue('');
 
-    const newTotalPago = pdv.totalPago + val;
-    if (newTotalPago >= pdv.total) {
-      handleFinalize([...pdv.pagamentos, { forma: paymentForm, valor: val, troco }]);
+    if (totalPago + val >= total) {
+      handleFinalize([...state.pagamentos, pagamento]);
     }
-  }, [paymentValue, paymentForm, pdv]);
+  }, [paymentValue, paymentForm, restante, totalPago, total, state.pagamentos]);
 
   const handleFinalize = useCallback(async (allPagamentos?: Pagamento[]) => {
-    const pags = allPagamentos || pdv.pagamentos;
+    const pags = allPagamentos || state.pagamentos;
     if (!depositoId) { toast.error('Selecione um depósito'); return; }
     if (pags.length === 0) { toast.error('Adicione pelo menos um pagamento'); return; }
 
     await finalizarVenda.mutateAsync({
-      items: pdv.items, pagamentos: pags,
-      descontoGeral: pdv.descontoGeral, depositoId,
+      items: state.items, pagamentos: pags,
+      descontoGeral: state.descontoGeral, depositoId,
     });
-    pdv.clearSale(); pdv.setMode('normal');
-  }, [pdv, depositoId, finalizarVenda]);
+    dispatch({ type: 'CLEAR_SALE' });
+  }, [state, depositoId, finalizarVenda]);
 
   const handleInlineConfirm = useCallback(() => {
     const val = parseFloat(inputValue);
-    if (!isNaN(val) && pdv.selectedIndex >= 0) {
-      if (pdv.mode === 'quantity') pdv.updateQuantity(pdv.selectedIndex, val);
-      else pdv.applyItemDiscount(pdv.selectedIndex, val);
+    if (!isNaN(val) && state.selectedIndex >= 0) {
+      if (state.mode === 'quantity') dispatch({ type: 'UPDATE_QUANTITY', index: state.selectedIndex, qtd: val });
+      else dispatch({ type: 'APPLY_ITEM_DISCOUNT', index: state.selectedIndex, desconto: val });
     }
-    setInputValue(''); pdv.setMode('normal');
-  }, [inputValue, pdv]);
+    setInputValue('');
+    dispatch({ type: 'SET_MODE', mode: 'normal' });
+  }, [inputValue, state.selectedIndex, state.mode]);
 
+  // ── Render ──────────────────────────────────────────────
   return (
     <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col z-50">
-      {/* Top Bar — Compact, high contrast */}
+      {/* Top Bar */}
       <div className="flex items-center justify-between px-5 py-3 bg-card border-b border-border">
         <div className="flex items-center gap-4">
           <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
             <ShoppingCart className="w-5 h-5 text-primary-foreground" />
           </div>
           <h1 className="text-lg font-display font-bold text-foreground tracking-tight">PDV</h1>
-          <Badge className={cn('text-xs px-3 py-1 font-mono font-bold tracking-wider', modeColor[pdv.mode])}>
-            {modeLabel[pdv.mode]}
+          <Badge className={cn('text-xs px-3 py-1 font-mono font-bold tracking-wider', modeColor[state.mode])}>
+            {modeLabel[state.mode]}
           </Badge>
           {!caixaAberto && (
             <div className="flex items-center gap-1.5 text-warning text-xs font-medium">
@@ -293,51 +183,44 @@ export default function PDV() {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/')}
-            className="text-muted-foreground hover:text-foreground gap-1.5"
-          >
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-muted-foreground hover:text-foreground gap-1.5">
             <LogOut className="w-4 h-4" />
             Sair
           </Button>
         </div>
       </div>
 
-      {/* Main Content — Full height, 60/40 split */}
+      {/* Main: 60/40 split */}
       <div className="flex-1 flex min-h-0">
-        {/* Left — Search + Items (60%) */}
+        {/* Left — Search + Cart */}
         <div className="flex-[3] flex flex-col border-r border-border min-h-0">
-          {/* Search bar */}
           <div className="p-3 border-b border-border/50">
             <PDVSearch
               ref={searchInputRef}
               query={searchQuery}
               onQueryChange={q => {
                 setSearchQuery(q);
-                if (pdv.mode !== 'search') pdv.setMode('search');
+                if (state.mode !== 'search') dispatch({ type: 'SET_MODE', mode: 'search' });
               }}
-              onFocus={() => pdv.setMode('search')}
-              onClear={() => { setSearchQuery(''); pdv.setMode('normal'); }}
-              isSearchMode={pdv.mode === 'search'}
+              onFocus={() => dispatch({ type: 'SET_MODE', mode: 'search' })}
+              onClear={() => { setSearchQuery(''); dispatch({ type: 'SET_MODE', mode: 'normal' }); }}
+              isSearchMode={state.mode === 'search'}
               results={searchResults}
               selectedIndex={searchSelectedIndex}
               onSelectProduct={(produto) => {
-                pdv.addItem(produto, true);
+                dispatch({ type: 'ADD_ITEM', produto, keepSearchMode: true });
                 setSearchQuery('');
                 searchInputRef.current?.focus();
               }}
             />
           </div>
 
-          {/* Inline input (quantity/discount) */}
-          {(pdv.mode === 'quantity' || pdv.mode === 'discount') && pdv.selectedIndex >= 0 && (
+          {(state.mode === 'quantity' || state.mode === 'discount') && state.selectedIndex >= 0 && (
             <div className="px-3 pt-3">
               <PDVInlineInput
                 ref={inputRef}
-                mode={pdv.mode}
-                productName={pdv.items[pdv.selectedIndex]?.produto.nome || ''}
+                mode={state.mode}
+                productName={state.items[state.selectedIndex]?.produto.nome || ''}
                 value={inputValue}
                 onChange={setInputValue}
                 onConfirm={handleInlineConfirm}
@@ -345,27 +228,22 @@ export default function PDV() {
             </div>
           )}
 
-          {/* Items table */}
           <div className="flex-1 p-3 min-h-0">
             <PDVItemsTable
-              items={pdv.items}
-              selectedIndex={pdv.selectedIndex}
-              onSelectIndex={pdv.setSelectedIndex}
-              onRemoveItem={pdv.removeItem}
+              items={state.items}
+              selectedIndex={state.selectedIndex}
+              onSelectIndex={(i) => dispatch({ type: 'SET_SELECTED_INDEX', index: i })}
+              onRemoveItem={(i) => dispatch({ type: 'REMOVE_ITEM', index: i })}
             />
           </div>
         </div>
 
-        {/* Right — Summary + Payment (40%) */}
+        {/* Right — Summary + Payment */}
         <div className="flex-[2] flex flex-col min-h-0 bg-muted/30">
           <div className="flex-1 p-4 flex flex-col gap-4 overflow-auto">
-            <PDVCartSummary
-              items={pdv.items}
-              descontoGeral={pdv.descontoGeral}
-              total={pdv.total}
-            />
+            <PDVCartSummary items={state.items} descontoGeral={state.descontoGeral} total={total} />
 
-            {pdv.mode === 'payment' && (
+            {state.mode === 'payment' && (
               <PDVPaymentPanel
                 ref={paymentInputRef}
                 paymentForm={paymentForm}
@@ -373,19 +251,19 @@ export default function PDV() {
                 paymentValue={paymentValue}
                 onPaymentValueChange={setPaymentValue}
                 onAddPayment={handleAddPayment}
-                pagamentos={pdv.pagamentos}
-                onRemovePagamento={pdv.removePagamento}
-                restante={pdv.restante}
+                pagamentos={state.pagamentos}
+                onRemovePagamento={(i) => dispatch({ type: 'REMOVE_PAGAMENTO', index: i })}
+                restante={restante}
                 onFinalize={() => handleFinalize()}
                 isFinalizing={finalizarVenda.isPending}
               />
             )}
 
-            {pdv.mode !== 'payment' && pdv.items.length > 0 && (
+            {state.mode !== 'payment' && state.items.length > 0 && (
               <Button
                 onClick={() => {
-                  pdv.setMode('payment');
-                  setPaymentValue(String(pdv.restante.toFixed(2)));
+                  dispatch({ type: 'SET_MODE', mode: 'payment' });
+                  setPaymentValue(String(restante.toFixed(2)));
                 }}
                 className="h-16 gradient-primary text-primary-foreground font-bold text-xl gap-3"
               >
@@ -396,7 +274,6 @@ export default function PDV() {
             )}
           </div>
 
-          {/* Shortcuts — fixed at bottom */}
           <div className="border-t border-border">
             <PDVShortcutsPanel />
           </div>
@@ -410,16 +287,19 @@ export default function PDV() {
             <DialogTitle>Cancelar venda?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Todos os {pdv.items.length} itens serão removidos. Esta ação não pode ser desfeita.
+            Todos os {state.items.length} itens serão removidos. Esta ação não pode ser desfeita.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirmCancel(false)}>Voltar</Button>
-            <Button variant="destructive" onClick={() => { pdv.clearSale(); setShowConfirmCancel(false); }}>
+            <Button variant="destructive" onClick={() => { dispatch({ type: 'CLEAR_SALE' }); setShowConfirmCancel(false); }}>
               Cancelar Venda
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Hotkeys Help Modal */}
+      <HotkeysHelpModal open={showHelp} onOpenChange={setShowHelp} />
     </div>
   );
 }
