@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
 import { ShoppingCart, Banknote, AlertTriangle, LogOut, User } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -244,6 +244,34 @@ export default function PDV() {
   usePdvHotkeys(hotkeyHandlers);
 
   // ── Render ──────────────────────────────────────────────
+
+  // Block PDV if no cash register is open
+  if (!caixaAberto) {
+    return (
+      <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-6">
+        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
+          <AlertTriangle className="w-8 h-8 text-destructive" />
+        </div>
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-display font-bold text-foreground">Caixa não aberto</h1>
+          <p className="text-muted-foreground max-w-md">
+            Para realizar vendas no PDV é necessário abrir um caixa primeiro. Acesse a página de Caixa para iniciar uma sessão.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
+            <LogOut className="w-4 h-4" />
+            Voltar
+          </Button>
+          <Button onClick={() => navigate('/caixa')} className="gap-2 gradient-primary text-primary-foreground">
+            <Banknote className="w-4 h-4" />
+            Abrir Caixa
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col z-50">
       {/* Top Bar */}
@@ -256,13 +284,6 @@ export default function PDV() {
           <Badge className={cn('text-xs px-3 py-1 font-mono font-bold tracking-wider', modeColor[state.mode])}>
             {modeLabel[state.mode]}
           </Badge>
-          {!caixaAberto && (
-            <div className="flex items-center gap-1.5 text-warning text-xs font-medium">
-              <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Sem caixa</span>
-              <Link to="/caixa" className="underline font-bold hover:text-warning/80">Abrir</Link>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-3">
