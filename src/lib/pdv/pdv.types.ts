@@ -15,14 +15,26 @@ export interface Pagamento {
   troco?: number;
 }
 
+export interface PDVCustomer {
+  id: string;
+  nome: string;
+  cpf_cnpj?: string;
+}
+
+export interface PDVDiscount {
+  tipo: 'valor' | 'percentual';
+  valor: number;
+}
+
 export type PDVMode = 'normal' | 'search' | 'quantity' | 'payment' | 'discount';
 
 export interface PDVState {
   items: PDVItem[];
   selectedIndex: number;
   mode: PDVMode;
+  customer: PDVCustomer | null;
+  discount: PDVDiscount;
   pagamentos: Pagamento[];
-  descontoGeral: number;
   idCounter: number;
 }
 

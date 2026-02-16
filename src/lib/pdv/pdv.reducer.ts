@@ -1,5 +1,5 @@
 import { Produto } from '@/hooks/useProdutos';
-import { PDVState, PDVItem, Pagamento, PDVMode } from './pdv.types';
+import { PDVState, PDVItem, Pagamento, PDVMode, PDVCustomer, PDVDiscount } from './pdv.types';
 
 // ── Action types ──────────────────────────────────────────────
 export type PDVAction =
@@ -9,9 +9,10 @@ export type PDVAction =
   | { type: 'APPLY_ITEM_DISCOUNT'; index: number; desconto: number }
   | { type: 'SET_SELECTED_INDEX'; index: number }
   | { type: 'SET_MODE'; mode: PDVMode }
+  | { type: 'SET_CUSTOMER'; customer: PDVCustomer | null }
+  | { type: 'SET_DISCOUNT'; discount: PDVDiscount }
   | { type: 'ADD_PAGAMENTO'; pagamento: Pagamento }
   | { type: 'REMOVE_PAGAMENTO'; index: number }
-  | { type: 'SET_DESCONTO_GERAL'; valor: number }
   | { type: 'CLEAR_SALE' };
 
 // ── Initial state ─────────────────────────────────────────────
@@ -19,8 +20,9 @@ export const initialPDVState: PDVState = {
   items: [],
   selectedIndex: -1,
   mode: 'normal',
+  customer: null,
+  discount: { tipo: 'valor', valor: 0 },
   pagamentos: [],
-  descontoGeral: 0,
   idCounter: 0,
 };
 
@@ -104,14 +106,17 @@ export function pdvReducer(state: PDVState, action: PDVAction): PDVState {
     case 'SET_MODE':
       return { ...state, mode: action.mode };
 
+    case 'SET_CUSTOMER':
+      return { ...state, customer: action.customer };
+
+    case 'SET_DISCOUNT':
+      return { ...state, discount: action.discount };
+
     case 'ADD_PAGAMENTO':
       return { ...state, pagamentos: [...state.pagamentos, action.pagamento] };
 
     case 'REMOVE_PAGAMENTO':
       return { ...state, pagamentos: state.pagamentos.filter((_, i) => i !== action.index) };
-
-    case 'SET_DESCONTO_GERAL':
-      return { ...state, descontoGeral: action.valor };
 
     case 'CLEAR_SALE':
       return { ...initialPDVState };
@@ -122,8 +127,20 @@ export function pdvReducer(state: PDVState, action: PDVAction): PDVState {
 }
 
 // ── Computed selectors ────────────────────────────────────────
+export function getSubtotalBruto(state: PDVState): number {
+  return state.items.reduce((sum, item) => sum + item.subtotal, 0);
+}
+
+export function getDescontoGeral(state: PDVState): number {
+  const subtotal = getSubtotalBruto(state);
+  if (state.discount.tipo === 'percentual') {
+    return subtotal * (state.discount.valor / 100);
+  }
+  return state.discount.valor;
+}
+
 export function getTotal(state: PDVState): number {
-  return state.items.reduce((sum, item) => sum + item.subtotal, 0) - state.descontoGeral;
+  return Math.max(0, getSubtotalBruto(state) - getDescontoGeral(state));
 }
 
 export function getTotalPago(state: PDVState): number {
