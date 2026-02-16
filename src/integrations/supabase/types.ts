@@ -73,6 +73,8 @@ export type Database = {
           descricao: string | null
           empresa_id: string
           id: string
+          origem: string | null
+          ref_id: string | null
           tipo: string
           usuario_id: string
           valor: number
@@ -84,6 +86,8 @@ export type Database = {
           descricao?: string | null
           empresa_id: string
           id?: string
+          origem?: string | null
+          ref_id?: string | null
           tipo: string
           usuario_id: string
           valor: number
@@ -95,6 +99,8 @@ export type Database = {
           descricao?: string | null
           empresa_id?: string
           id?: string
+          origem?: string | null
+          ref_id?: string | null
           tipo?: string
           usuario_id?: string
           valor?: number
@@ -223,6 +229,53 @@ export type Database = {
             columns: ["pai_id"]
             isOneToOne: false
             referencedRelation: "categorias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clientes: {
+        Row: {
+          ativo: boolean
+          cpf_cnpj: string | null
+          criado_em: string
+          email: string | null
+          empresa_id: string
+          endereco: string | null
+          id: string
+          nome: string
+          observacao: string | null
+          telefone: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          cpf_cnpj?: string | null
+          criado_em?: string
+          email?: string | null
+          empresa_id: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          observacao?: string | null
+          telefone?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          cpf_cnpj?: string | null
+          criado_em?: string
+          email?: string | null
+          empresa_id?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          observacao?: string | null
+          telefone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clientes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -515,6 +568,7 @@ export type Database = {
           origem: string
           produto_id: string
           qtd: number
+          ref_id: string | null
           tipo: string
           usuario_id: string | null
         }
@@ -528,6 +582,7 @@ export type Database = {
           origem: string
           produto_id: string
           qtd: number
+          ref_id?: string | null
           tipo: string
           usuario_id?: string | null
         }
@@ -541,6 +596,7 @@ export type Database = {
           origem?: string
           produto_id?: string
           qtd?: number
+          ref_id?: string | null
           tipo?: string
           usuario_id?: string | null
         }
@@ -587,6 +643,7 @@ export type Database = {
           criado_em: string | null
           forma: string
           id: string
+          taxa: number
           troco: number | null
           valor: number
           venda_id: string
@@ -595,6 +652,7 @@ export type Database = {
           criado_em?: string | null
           forma: string
           id?: string
+          taxa?: number
           troco?: number | null
           valor: number
           venda_id: string
@@ -603,6 +661,7 @@ export type Database = {
           criado_em?: string | null
           forma?: string
           id?: string
+          taxa?: number
           troco?: number | null
           valor?: number
           venda_id?: string
@@ -749,6 +808,7 @@ export type Database = {
         Row: {
           desconto: number | null
           id: string
+          nome_snapshot: string | null
           preco_unit: number
           produto_id: string
           qtd: number
@@ -758,6 +818,7 @@ export type Database = {
         Insert: {
           desconto?: number | null
           id?: string
+          nome_snapshot?: string | null
           preco_unit: number
           produto_id: string
           qtd?: number
@@ -767,6 +828,7 @@ export type Database = {
         Update: {
           desconto?: number | null
           id?: string
+          nome_snapshot?: string | null
           preco_unit?: number
           produto_id?: string
           qtd?: number
@@ -799,33 +861,56 @@ export type Database = {
       }
       vendas: {
         Row: {
+          caixa_id: string | null
+          cliente_id: string | null
           data: string | null
           desconto: number | null
           empresa_id: string
           id: string
           status: string | null
+          subtotal: number | null
           total: number | null
           usuario_id: string | null
         }
         Insert: {
+          caixa_id?: string | null
+          cliente_id?: string | null
           data?: string | null
           desconto?: number | null
           empresa_id: string
           id?: string
           status?: string | null
+          subtotal?: number | null
           total?: number | null
           usuario_id?: string | null
         }
         Update: {
+          caixa_id?: string | null
+          cliente_id?: string | null
           data?: string | null
           desconto?: number | null
           empresa_id?: string
           id?: string
           status?: string | null
+          subtotal?: number | null
           total?: number | null
           usuario_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "vendas_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "vendas_empresa_id_fkey"
             columns: ["empresa_id"]
