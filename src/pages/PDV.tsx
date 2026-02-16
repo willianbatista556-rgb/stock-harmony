@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ShoppingCart, Banknote } from 'lucide-react';
+import { ShoppingCart, Banknote, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useProdutos, Produto } from '@/hooks/useProdutos';
 import { useDepositos } from '@/hooks/useDepositos';
 import { usePDV, useFinalizarVenda, PDVMode, Pagamento } from '@/hooks/usePDV';
+import { useCaixaAberto } from '@/hooks/useCaixa';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -54,6 +56,7 @@ export default function PDV() {
   const paymentInputRef = useRef<HTMLInputElement>(null);
 
   const pdv = usePDV();
+  const { data: caixaAberto } = useCaixaAberto();
 
   // Auto-select first deposit
   useEffect(() => {
@@ -236,6 +239,14 @@ export default function PDV() {
           </Select>
         </div>
       </div>
+
+      {!caixaAberto && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-warning/10 border border-warning/30 text-warning">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span className="text-sm font-medium">Nenhum caixa aberto. As vendas não serão registradas no controle de caixa.</span>
+          <Link to="/caixa" className="text-sm font-bold underline ml-auto hover:text-warning/80">Abrir Caixa</Link>
+        </div>
+      )}
 
       {/* Main Content — Split Screen */}
       <div className="flex-1 grid grid-cols-5 gap-3 min-h-0">
