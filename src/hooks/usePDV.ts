@@ -34,7 +34,7 @@ export function usePDV() {
   const totalPago = pagamentos.reduce((sum, p) => sum + p.valor, 0);
   const restante = Math.max(0, total - totalPago);
 
-  const addItem = useCallback((produto: Produto) => {
+  const addItem = useCallback((produto: Produto, keepSearchMode = false) => {
     setItems(prev => {
       const existing = prev.find(i => i.produto.id === produto.id);
       if (existing) {
@@ -56,7 +56,7 @@ export function usePDV() {
       setSelectedIndex(prev.length);
       return [...prev, newItem];
     });
-    setMode('normal');
+    if (!keepSearchMode) setMode('normal');
   }, []);
 
   const removeItem = useCallback((index: number) => {
@@ -146,84 +146,28 @@ export function useFinalizarVenda() {
 
       const total = items.reduce((sum, item) => sum + item.subtotal, 0) - descontoGeral;
 
-      // 1. Create venda
-      const { data: venda, error: vendaError } = await supabase
-        .from('vendas')
-        .insert({
-          empresa_id: profile.empresa_id,
-          usuario_id: user.id,
-          total,
-          status: 'finalizada',
-          desconto: descontoGeral,
-        })
-        .select()
-        .single();
-
-      if (vendaError) throw vendaError;
-
-      // 2. Insert venda_itens
-      const itensData = items.map(item => ({
-        venda_id: venda.id,
-        produto_id: item.produto.id,
-        qtd: item.qtd,
-        preco_unit: item.preco_unit,
-        desconto: item.desconto,
-      }));
-
-      const { error: itensError } = await supabase
-        .from('venda_itens')
-        .insert(itensData);
-
-      if (itensError) throw itensError;
-
-      // 3. Insert pagamentos
-      const pagData = pagamentos.map(p => ({
-        venda_id: venda.id,
-        forma: p.forma,
-        valor: p.valor,
-        troco: p.troco || 0,
-      }));
-
-      const { error: pagError } = await supabase
-        .from('pagamentos')
-        .insert(pagData);
-
-      if (pagError) throw pagError;
-
-      // 4. Update estoque (saída para cada item)
-      for (const item of items) {
-        // Insert movimentacao
-        await supabase.from('movimentacoes').insert({
-          tipo: 'saida',
-          origem: 'venda',
+      // Single atomic RPC call — handles everything server-side
+      const { data, error } = await supabase.rpc('finalizar_venda', {
+        p_empresa_id: profile.empresa_id,
+        p_usuario_id: user.id,
+        p_deposito_id: depositoId,
+        p_total: total,
+        p_desconto: descontoGeral,
+        p_itens: items.map(item => ({
           produto_id: item.produto.id,
-          deposito_id: depositoId,
-          qtd: -Math.abs(item.qtd),
-          custo_unit: item.preco_unit,
-          empresa_id: profile.empresa_id,
-          usuario_id: user.id,
-        });
+          qtd: item.qtd,
+          preco_unit: item.preco_unit,
+          desconto: item.desconto,
+        })),
+        p_pagamentos: pagamentos.map(p => ({
+          forma: p.forma,
+          valor: p.valor,
+          troco: p.troco || 0,
+        })),
+      });
 
-        // Update estoque
-        const { data: estoqueExistente } = await supabase
-          .from('estoque')
-          .select('id, qtd')
-          .eq('produto_id', item.produto.id)
-          .eq('deposito_id', depositoId)
-          .single();
-
-        if (estoqueExistente) {
-          await supabase
-            .from('estoque')
-            .update({
-              qtd: (estoqueExistente.qtd || 0) - item.qtd,
-              atualizado_em: new Date().toISOString(),
-            })
-            .eq('id', estoqueExistente.id);
-        }
-      }
-
-      return venda;
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
@@ -231,8 +175,18 @@ export function useFinalizarVenda() {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
       toast.success('Venda finalizada com sucesso!');
     },
-    onError: (error) => {
-      toast.error('Erro ao finalizar venda: ' + error.message);
+    onError: (error: Error) => {
+      // Parse user-friendly error messages from DB function
+      const msg = error.message;
+      if (msg.includes('Estoque insuficiente')) {
+        toast.error('Estoque insuficiente', { description: msg });
+      } else if (msg.includes('sem registro de estoque')) {
+        toast.error('Produto sem estoque cadastrado', { description: msg });
+      } else if (msg.includes('Pagamento insuficiente')) {
+        toast.error('Pagamento insuficiente', { description: msg });
+      } else {
+        toast.error('Erro ao finalizar venda: ' + msg);
+      }
     },
   });
 }

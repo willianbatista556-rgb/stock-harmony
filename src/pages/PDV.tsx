@@ -115,9 +115,8 @@ export default function PDV() {
         setSearchSelectedIndex(i => Math.max(i - 1, 0));
       } else if (e.key === 'Enter' && searchResults.length > 0) {
         e.preventDefault();
-        pdv.addItem(searchResults[searchSelectedIndex]);
+        pdv.addItem(searchResults[searchSelectedIndex], true); // keep search mode for rapid scanning
         setSearchQuery('');
-        pdv.setMode('search');
         setTimeout(() => searchInputRef.current?.focus(), 50);
       }
       return;
@@ -339,9 +338,8 @@ export default function PDV() {
                 <button
                   key={produto.id}
                   onClick={() => {
-                    pdv.addItem(produto);
+                    pdv.addItem(produto, true); // keep search mode
                     setSearchQuery('');
-                    pdv.setMode('search');
                     searchInputRef.current?.focus();
                   }}
                   className={cn(
