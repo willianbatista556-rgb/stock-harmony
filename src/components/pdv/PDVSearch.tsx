@@ -21,19 +21,19 @@ export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
     return (
       <>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             ref={ref}
-            placeholder='Buscar produto (nome, SKU, EAN)... pressione "/" para focar'
+            placeholder='Código de barras, nome ou SKU...'
             value={query}
             onChange={e => onQueryChange(e.target.value)}
             onFocus={onFocus}
-            className="pl-9 h-12 text-base font-mono"
+            className="pl-11 h-14 text-lg font-mono border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/40"
           />
           {isSearchMode && query && (
             <button
               onClick={onClear}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -41,25 +41,24 @@ export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
         </div>
 
         {isSearchMode && results.length > 0 && (
-          <div className="bg-card rounded-xl border border-border/50 shadow-card overflow-auto flex-shrink-0 max-h-[300px]">
+          <div className="absolute left-0 right-0 mx-3 mt-1 bg-card rounded-xl border border-border shadow-lg overflow-auto max-h-[350px] z-20">
             {results.map((produto, i) => (
               <button
                 key={produto.id}
                 onClick={() => onSelectProduct(produto)}
                 className={cn(
-                  'w-full flex items-center justify-between px-4 py-3 text-left transition-colors border-b border-border/30 last:border-0',
-                  i === selectedIndex ? 'bg-primary/10' : 'hover:bg-muted/50'
+                  'w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors border-b border-border/20 last:border-0',
+                  i === selectedIndex ? 'bg-primary/8' : 'hover:bg-muted/40'
                 )}
               >
                 <div>
-                  <p className="font-medium text-card-foreground">{produto.nome}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="font-semibold text-foreground">{produto.nome}</p>
+                  <p className="text-xs text-muted-foreground font-mono">
                     {produto.sku && <span>SKU: {produto.sku}</span>}
-                    {produto.ean && <span className="ml-2">EAN: {produto.ean}</span>}
-                    {produto.marca && <span className="ml-2">• {produto.marca}</span>}
+                    {produto.ean && <span className="ml-3">EAN: {produto.ean}</span>}
                   </p>
                 </div>
-                <span className="font-bold tabular-nums text-primary">
+                <span className="font-bold tabular-nums font-mono text-lg text-primary">
                   {formatCurrency(produto.preco_venda || 0)}
                 </span>
               </button>
