@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
-import { ShoppingCart, Banknote, AlertTriangle, LogOut, User, FileText, Landmark } from 'lucide-react';
+import { ShoppingCart, Banknote, AlertTriangle, LogOut, User, FileText, Landmark, ArrowDownUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -40,6 +40,7 @@ import { HotkeysHelpModal } from '@/components/pdv/HotkeysHelpModal';
 import { CustomerModal } from '@/components/pdv/CustomerModal';
 import { DiscountModal } from '@/components/pdv/DiscountModal';
 import { ReceiptModal } from '@/components/pdv/ReceiptModal';
+import { CaixaMovModal } from '@/components/pdv/CaixaMovModal';
 
 export default function PDV() {
   const navigate = useNavigate();
@@ -112,6 +113,7 @@ export default function PDV() {
   const [showCustomer, setShowCustomer] = useState(false);
   const [showDiscount, setShowDiscount] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [showCaixaMov, setShowCaixaMov] = useState(false);
   const [lastSale, setLastSale] = useState<{
     items: typeof state.items;
     pagamentos: Pagamento[];
@@ -270,11 +272,13 @@ export default function PDV() {
       }
     },
     onCustomer: () => setShowCustomer(true),
+    onCaixaMov: () => { if (caixaAberto && !budgetMode) setShowCaixaMov(true); },
     onCancel: () => {
-      if (showCustomer || showDiscount || showHelp) {
+      if (showCustomer || showDiscount || showHelp || showCaixaMov) {
         setShowCustomer(false);
         setShowDiscount(false);
         setShowHelp(false);
+        setShowCaixaMov(false);
       } else if (state.mode === 'payment') {
         dispatch({ type: 'SET_MODE', mode: 'normal' });
         setPaymentValue('');
@@ -611,6 +615,16 @@ export default function PDV() {
           desconto={lastSale.desconto}
           total={lastSale.total}
           isBudget={lastSale.isBudget}
+        />
+      )}
+
+      {caixaAberto && user && profile?.empresa_id && (
+        <CaixaMovModal
+          open={showCaixaMov}
+          onOpenChange={setShowCaixaMov}
+          caixaId={caixaAberto.id}
+          empresaId={profile.empresa_id}
+          usuarioId={user.id}
         />
       )}
     </div>

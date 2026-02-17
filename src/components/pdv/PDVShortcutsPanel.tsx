@@ -6,6 +6,7 @@ const shortcuts = [
   { key: 'F2', label: 'Desconto' },
   { key: 'F3', label: 'Cliente' },
   { key: 'F4', label: 'Finalizar' },
+  { key: 'F5', label: 'Sangria/Sup.' },
   { key: 'F6', label: 'Qtd' },
   { key: 'Ctrl+L', label: 'Busca' },
   { key: 'Del', label: 'Remover' },
