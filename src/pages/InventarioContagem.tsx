@@ -1,9 +1,9 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ClipboardList, Search, Trash2, CheckCircle2, ArrowLeft,
   AlertTriangle, ArrowDownCircle, ArrowUpCircle, Equal, XCircle,
-  Loader2, Play, RefreshCw, FileText,
+  Loader2, Play, RefreshCw, FileText, Package, Hash,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useInventarioItens, useAdicionarItemInventario,
   useRemoverItemInventario, useFinalizarInventario,
@@ -26,6 +26,7 @@ import { useProdutos, Produto } from '@/hooks/useProdutos';
 import { useDepositos } from '@/hooks/useDepositos';
 import { useEstoquePorDeposito } from '@/hooks/useEstoquePorDeposito';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export default function InventarioContagem() {
   const { id: inventarioId } = useParams<{ id: string }>();
@@ -47,12 +48,18 @@ export default function InventarioContagem() {
   const recontagem = useIniciarRecontagem();
 
   const [busca, setBusca] = useState('');
-  const [qtdInput, setQtdInput] = useState('1');
   const [showIniciar, setShowIniciar] = useState(false);
   const [showFinalizar, setShowFinalizar] = useState(false);
   const [showAplicar, setShowAplicar] = useState(false);
   const [showRecontagem, setShowRecontagem] = useState(false);
+  const [showQtdModal, setShowQtdModal] = useState(false);
+  const [qtdModalProduto, setQtdModalProduto] = useState<Produto | null>(null);
+  const [qtdModalValue, setQtdModalValue] = useState('');
+  const [selectedSearchIdx, setSelectedSearchIdx] = useState(0);
+  const [ultimosContados, setUltimosContados] = useState<Array<{ produto: Produto; qtd: number; ts: number }>>([]);
+
   const inputRef = useRef<HTMLInputElement>(null);
+  const qtdInputRef = useRef<HTMLInputElement>(null);
 
   const status = inventario?.status || 'rascunho';
   const isRascunho = status === 'rascunho';
@@ -68,27 +75,25 @@ export default function InventarioContagem() {
     return m;
   }, [produtos]);
 
-  // Determine max contagem
+  // Contagem logic
   const maxContagem = useMemo(() => {
     if (itens.length === 0) return 1;
     return Math.max(...itens.map(i => i.contagem));
   }, [itens]);
 
-  // Available contagem tabs
   const contagensList = useMemo(() => {
     const set = new Set(itens.map(i => i.contagem));
     return Array.from(set).sort((a, b) => a - b);
   }, [itens]);
 
   const [selectedContagem, setSelectedContagem] = useState<number>(1);
-  // Keep selectedContagem in sync
   const activeContagem = contagensList.includes(selectedContagem) ? selectedContagem : maxContagem;
 
   const currentItens = useMemo(() => {
     return itens.filter(i => i.contagem === activeContagem);
   }, [itens, activeContagem]);
 
-  // Search
+  // Search with EAN exact match priority
   const searchResults = useMemo(() => {
     if (!busca.trim() || !isContagem) return [];
     const q = busca.toLowerCase().trim();
@@ -104,21 +109,99 @@ export default function InventarioContagem() {
     return produtos.find(p => p.ean && p.ean.toLowerCase() === busca.toLowerCase().trim()) || null;
   }, [busca, produtos, isContagem]);
 
-  const handleAddProduto = async (produto: Produto) => {
-    if (!inventarioId) return;
-    const qtd = parseFloat(qtdInput) || 1;
-    await addItem.mutateAsync({ inventarioId, produtoId: produto.id, qtd, contagem: maxContagem });
-    setBusca('');
-    setQtdInput('1');
-    inputRef.current?.focus();
-  };
+  // Reset search index on results change
+  useEffect(() => { setSelectedSearchIdx(0); }, [searchResults.length]);
 
+  const handleAddProduto = useCallback(async (produto: Produto, qtd: number = 1) => {
+    if (!inventarioId) return;
+    await addItem.mutateAsync({ inventarioId, produtoId: produto.id, qtd, contagem: maxContagem });
+    // Track últimos contados
+    setUltimosContados(prev => {
+      const next = [{ produto, qtd, ts: Date.now() }, ...prev.filter(u => u.produto.id !== produto.id)];
+      return next.slice(0, 5);
+    });
+    setBusca('');
+    toast.success(`+${qtd} ${produto.nome}`, { duration: 1500 });
+    inputRef.current?.focus();
+  }, [inventarioId, addItem, maxContagem]);
+
+  // Keyboard handler for search input
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && exactEanMatch) {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      handleAddProduto(exactEanMatch);
+      if (exactEanMatch) {
+        // EAN exact: add +1 immediately (barcode scanner behavior)
+        handleAddProduto(exactEanMatch, 1);
+      } else if (searchResults.length > 0) {
+        const selected = searchResults[selectedSearchIdx];
+        if (selected) handleAddProduto(selected, 1);
+      }
+      return;
+    }
+
+    // F6 = open quantity modal for selected product
+    if (e.key === 'F6') {
+      e.preventDefault();
+      const target = exactEanMatch || (searchResults.length > 0 ? searchResults[selectedSearchIdx] : null);
+      if (target) {
+        setQtdModalProduto(target);
+        setQtdModalValue('');
+        setShowQtdModal(true);
+      }
+      return;
+    }
+
+    // Arrow navigation in search results
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedSearchIdx(i => Math.min(i + 1, searchResults.length - 1));
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedSearchIdx(i => Math.max(i - 1, 0));
+    }
+
+    // Escape clears search
+    if (e.key === 'Escape') {
+      setBusca('');
     }
   };
+
+  // Quantity modal confirm
+  const handleQtdConfirm = () => {
+    if (!qtdModalProduto) return;
+    const qtd = parseFloat(qtdModalValue);
+    if (!qtd || qtd <= 0) {
+      toast.error('Quantidade inválida');
+      return;
+    }
+    handleAddProduto(qtdModalProduto, qtd);
+    setShowQtdModal(false);
+    setQtdModalProduto(null);
+  };
+
+  // Focus quantity input when modal opens
+  useEffect(() => {
+    if (showQtdModal) {
+      setTimeout(() => qtdInputRef.current?.focus(), 50);
+    }
+  }, [showQtdModal]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    if (!isContagem) return;
+    const handler = (e: KeyboardEvent) => {
+      // Don't capture if modal open
+      if (showQtdModal || showFinalizar || showIniciar) return;
+      
+      // Focus search on any printable character if not focused
+      if (document.activeElement !== inputRef.current && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isContagem, showQtdModal, showFinalizar, showIniciar]);
 
   const handleIniciar = async () => {
     if (!inventarioId) return;
@@ -174,7 +257,7 @@ export default function InventarioContagem() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -183,9 +266,7 @@ export default function InventarioContagem() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-display font-bold text-foreground">
-                Inventário
-              </h1>
+              <h1 className="text-2xl font-display font-bold text-foreground">Inventário</h1>
               <Badge variant="outline" className={cn('text-xs',
                 isRascunho && 'bg-muted text-muted-foreground',
                 isContagem && 'bg-warning/10 text-warning border-warning/20',
@@ -197,7 +278,7 @@ export default function InventarioContagem() {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Depósito: {depositoNome}
+              {depositoNome}
               {inventario.observacao && ` · ${inventario.observacao}`}
             </p>
           </div>
@@ -219,7 +300,7 @@ export default function InventarioContagem() {
                 <XCircle className="w-4 h-4 mr-1.5" /> Cancelar
               </Button>
               <Button size="sm" onClick={() => setShowFinalizar(true)} disabled={totalItens === 0} className="gradient-primary text-primary-foreground gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> Finalizar Contagem
+                <CheckCircle2 className="w-4 h-4" /> Finalizar
               </Button>
             </>
           )}
@@ -244,7 +325,7 @@ export default function InventarioContagem() {
             <div className="text-center space-y-1">
               <p className="font-semibold text-foreground">Inventário em Rascunho</p>
               <p className="text-sm text-muted-foreground max-w-md">
-                Ao iniciar, o sistema captura um snapshot de todo o estoque do depósito neste exato momento. Isso garante que as divergências sejam calculadas sobre o estoque real no início da contagem.
+                Ao iniciar, o sistema captura um snapshot de todo o estoque do depósito. As divergências serão calculadas sobre o estoque real no início da contagem.
               </p>
             </div>
             <Button onClick={() => setShowIniciar(true)} className="gradient-primary text-primary-foreground gap-1.5">
@@ -254,8 +335,126 @@ export default function InventarioContagem() {
         </Card>
       )}
 
-      {/* Stats Cards (not for rascunho) */}
-      {!isRascunho && (
+      {/* ── COUNTING MODE ── */}
+      {isContagem && (
+        <>
+          {/* Search bar - prominent, keyboard-first */}
+          <Card className="bg-card shadow-card border-2 border-primary/20">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Badge variant="secondary" className="font-mono text-xs">
+                  Contagem #{maxContagem}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  Enter = +1 · F6 = quantidade · ↑↓ = navegar
+                </span>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  ref={inputRef}
+                  placeholder="Bipe o código de barras ou digite o nome do produto…"
+                  value={busca}
+                  onChange={e => setBusca(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="pl-11 h-12 text-lg font-mono border-2 border-border focus:border-primary"
+                  autoFocus
+                />
+                {busca && (
+                  <button
+                    onClick={() => { setBusca(''); inputRef.current?.focus(); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Search results dropdown */}
+              {searchResults.length > 0 && (
+                <div className="mt-2 border border-border rounded-lg divide-y divide-border bg-popover max-h-64 overflow-y-auto shadow-lg">
+                  {searchResults.map((p, idx) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleAddProduto(p, 1)}
+                      className={cn(
+                        'w-full flex items-center justify-between px-4 py-3 transition-colors text-left',
+                        idx === selectedSearchIdx ? 'bg-accent' : 'hover:bg-accent/50'
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Package className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="font-medium text-sm text-foreground">{p.nome}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {p.ean && `EAN: ${p.ean}`}{p.ean && p.sku && ' · '}{p.sku && `SKU: ${p.sku}`}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs font-mono">
+                          Est: {estoqueMap[p.id] ?? 0}
+                        </Badge>
+                        {idx === selectedSearchIdx && (
+                          <Badge className="text-xs bg-primary text-primary-foreground">
+                            Enter
+                          </Badge>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {busca.trim() && searchResults.length === 0 && (
+                <p className="mt-2 text-sm text-muted-foreground text-center py-3">
+                  Nenhum produto encontrado para "{busca}"
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Últimos contados */}
+          {ultimosContados.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="text-xs text-muted-foreground font-semibold shrink-0 uppercase tracking-wider">Últimos:</span>
+              {ultimosContados.map((u, i) => (
+                <Badge
+                  key={`${u.produto.id}-${u.ts}`}
+                  variant="outline"
+                  className={cn(
+                    'shrink-0 cursor-pointer hover:bg-accent transition-colors font-mono',
+                    i === 0 && 'border-primary/40 bg-primary/5'
+                  )}
+                  onClick={() => {
+                    setBusca(u.produto.ean || u.produto.nome);
+                    inputRef.current?.focus();
+                  }}
+                >
+                  +{u.qtd} {u.produto.nome.length > 20 ? u.produto.nome.slice(0, 20) + '…' : u.produto.nome}
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Stats inline */}
+          <div className="flex items-center gap-6 px-1">
+            <div className="flex items-center gap-1.5">
+              <Hash className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground tabular-nums">{totalItens}</span>
+              <span className="text-xs text-muted-foreground">produtos</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Package className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground tabular-nums">{totalContado}</span>
+              <span className="text-xs text-muted-foreground">unidades</span>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Stats Cards (fechado) */}
+      {!isRascunho && !isContagem && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card className="bg-card shadow-card">
             <CardContent className="pt-5">
@@ -269,80 +468,18 @@ export default function InventarioContagem() {
               <p className="text-2xl font-bold tabular-nums text-foreground">{totalContado}</p>
             </CardContent>
           </Card>
-          {!isContagem && (
-            <Card className="bg-card shadow-card">
-              <CardContent className="pt-5">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Divergências</p>
-                <p className={cn('text-2xl font-bold tabular-nums', divergencias > 0 ? 'text-warning' : 'text-success')}>
-                  {divergencias}
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          <Card className="bg-card shadow-card">
+            <CardContent className="pt-5">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Divergências</p>
+              <p className={cn('text-2xl font-bold tabular-nums', divergencias > 0 ? 'text-warning' : 'text-success')}>
+                {divergencias}
+              </p>
+            </CardContent>
+          </Card>
         </div>
       )}
 
-      {/* Search bar (only during counting) */}
-      {isContagem && (
-        <Card className="bg-card shadow-card">
-          <CardContent className="pt-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Badge variant="secondary" className="font-mono text-xs">
-                Contagem #{maxContagem}
-              </Badge>
-              {maxContagem > 1 && (
-                <span className="text-xs text-muted-foreground">Recontagem de itens divergentes</span>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  ref={inputRef}
-                  placeholder="Bipe o código de barras ou busque por nome…"
-                  value={busca}
-                  onChange={e => setBusca(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="pl-9"
-                  autoFocus
-                />
-              </div>
-              <Input
-                type="number"
-                min="0.01"
-                step="1"
-                value={qtdInput}
-                onChange={e => setQtdInput(e.target.value)}
-                className="w-24 text-center font-mono"
-                placeholder="Qtd"
-              />
-            </div>
-            {searchResults.length > 0 && (
-              <div className="mt-2 border border-border rounded-lg divide-y divide-border bg-popover max-h-64 overflow-y-auto">
-                {searchResults.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleAddProduto(p)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/50 transition-colors text-left"
-                  >
-                    <div>
-                      <p className="font-medium text-sm text-foreground">{p.nome}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {p.ean && `EAN: ${p.ean} · `}{p.sku && `SKU: ${p.sku}`}
-                      </p>
-                    </div>
-                    <Badge variant="secondary" className="text-xs font-mono">
-                      Est: {estoqueMap[p.id] ?? 0}
-                    </Badge>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Items Table with tabs for contagens */}
+      {/* Items Table */}
       {!isRascunho && (
         <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
           {contagensList.length > 1 && !isContagem && (
@@ -367,7 +504,7 @@ export default function InventarioContagem() {
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <ClipboardList className="w-12 h-12 text-muted-foreground/40" />
               <p className="text-muted-foreground">
-                {isContagem ? 'Comece bipando ou buscando um produto acima.' : 'Nenhum item nesta contagem.'}
+                {isContagem ? 'Bipe ou busque um produto acima para começar.' : 'Nenhum item nesta contagem.'}
               </p>
             </div>
           ) : (
@@ -378,7 +515,7 @@ export default function InventarioContagem() {
                   <TableHead className="font-semibold text-right">Contado</TableHead>
                   {!isContagem && (
                     <>
-                      <TableHead className="font-semibold text-right">Esperado (Snapshot)</TableHead>
+                      <TableHead className="font-semibold text-right">Esperado</TableHead>
                       <TableHead className="font-semibold text-right">Diferença</TableHead>
                     </>
                   )}
@@ -401,7 +538,7 @@ export default function InventarioContagem() {
                           </p>
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-mono font-semibold tabular-nums">
+                      <TableCell className="text-right font-mono font-semibold tabular-nums text-lg">
                         {item.qtd_contada}
                       </TableCell>
                       {!isContagem && (
@@ -445,13 +582,46 @@ export default function InventarioContagem() {
         </div>
       )}
 
-      {/* ── Dialogs ── */}
+      {/* ── Quantity Modal (F6) ── */}
+      <Dialog open={showQtdModal} onOpenChange={(open) => { setShowQtdModal(open); if (!open) inputRef.current?.focus(); }}>
+        <DialogContent className="bg-card max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-base">Quantidade</DialogTitle>
+            <DialogDescription>
+              {qtdModalProduto?.nome}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            ref={qtdInputRef}
+            type="number"
+            min="0.01"
+            step="1"
+            value={qtdModalValue}
+            onChange={e => setQtdModalValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); handleQtdConfirm(); }
+              if (e.key === 'Escape') { setShowQtdModal(false); }
+            }}
+            placeholder="Ex: 24"
+            className="h-14 text-2xl text-center font-mono"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowQtdModal(false)}>Cancelar</Button>
+            <Button onClick={handleQtdConfirm} className="gradient-primary text-primary-foreground">
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm Dialogs ── */}
       <Dialog open={showIniciar} onOpenChange={setShowIniciar}>
         <DialogContent className="bg-card max-w-sm">
           <DialogHeader>
             <DialogTitle>Iniciar Contagem?</DialogTitle>
             <DialogDescription>
-              O sistema vai capturar um snapshot de todo o estoque do depósito <strong>{depositoNome}</strong> neste momento. As divergências serão calculadas com base neste snapshot.
+              O sistema vai capturar um snapshot de todo o estoque do depósito <strong>{depositoNome}</strong> neste momento.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -469,7 +639,7 @@ export default function InventarioContagem() {
           <DialogHeader>
             <DialogTitle>Finalizar Contagem?</DialogTitle>
             <DialogDescription>
-              O sistema vai comparar as quantidades contadas com o snapshot capturado no início e calcular as divergências.
+              O sistema vai comparar {totalItens} produto(s) contados com o snapshot e calcular divergências.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -505,7 +675,7 @@ export default function InventarioContagem() {
           <DialogHeader>
             <DialogTitle>Iniciar Recontagem?</DialogTitle>
             <DialogDescription>
-              Uma nova contagem será criada apenas para os {divergencias} item(ns) com divergência. O inventário voltará ao status "Em Contagem".
+              Nova contagem para os {divergencias} item(ns) divergentes. O inventário volta a "Em Contagem".
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
