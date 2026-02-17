@@ -1,38 +1,25 @@
-/**
- * Print module public API.
- */
+import { createWebSerialTransport } from './transport.webserial'
+import { buildReceipt80mm } from './templates'
+import { ReceiptData } from './types'
 
-export { EscPosBuilder } from './escpos';
-export { createWebSerialTransport, webSerialTransport, isWebSerialSupported, isPrinterConnected } from './transport.webserial';
-export { buildReceipt80mm } from './templates';
-export type { SerialTransport } from './transport.webserial';
-export type { ReceiptData, ReceiptItem, ReceiptPayment } from './types';
+export { buildReceipt80mm } from './templates'
+export { createWebSerialTransport, isWebSerialSupported, isPrinterConnected } from './transport.webserial'
+export type { SerialTransport } from './transport.webserial'
+export type { ReceiptData, ReceiptItem, ReceiptPayment } from './types'
 
-import { webSerialTransport } from './transport.webserial';
-import { buildReceipt80mm } from './templates';
-import type { ReceiptData } from './types';
+let transport = createWebSerialTransport()
 
-/**
- * High-level: connect (if needed) + print receipt.
- */
-export async function printReceipt(data: ReceiptData): Promise<boolean> {
-  try {
-    if (!webSerialTransport.isConnected()) {
-      await webSerialTransport.connect();
-    }
-    const bytes = buildReceipt80mm(data);
-    await webSerialTransport.write(bytes);
-    return true;
-  } catch (err) {
-    console.error('[ESC/POS] Print failed:', err);
-    throw err;
+export async function printReceipt(receipt: ReceiptData) {
+  if (!transport.isSupported()) {
+    throw new Error('Seu navegador não suporta impressão via WebSerial. Use Chrome/Edge.')
   }
-}
 
-export function connectPrinter() {
-  return webSerialTransport.connect();
-}
+  const bytes = buildReceipt80mm(receipt)
 
-export function disconnectPrinter() {
-  return webSerialTransport.disconnect();
+  await transport.connect()
+  try {
+    await transport.write(bytes)
+  } finally {
+    await transport.disconnect()
+  }
 }
