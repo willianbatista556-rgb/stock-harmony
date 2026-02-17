@@ -29,6 +29,7 @@ import {
 import { useSalvarOrcamento } from '@/lib/pdv/pdv.api';
 import { ensureClienteBalcao } from '@/lib/pdv/pdv.customers.api';
 import { criarMovimentacaoCaixa } from '@/lib/pdv/pdv.caixa.api';
+import { getEmpresaConfig } from '@/lib/pdv/pdv.config.api';
 
 // PDV UI components
 import { PDVSearch } from '@/components/pdv/PDVSearch';
@@ -84,6 +85,18 @@ export default function PDV() {
       dispatch({ type: 'SET_CUSTOMER', customer: { id: balcId, nome: 'CLIENTE BALCAO' } });
     }).catch(() => {});
   }, [terminalByIdent, balcaoLoaded, profile?.empresa_id]);
+
+  // ── Load empresa config for stock blocking ──────────────
+  useEffect(() => {
+    if (!profile?.empresa_id) return;
+    getEmpresaConfig(profile.empresa_id).then((cfg) => {
+      dispatch({
+        type: 'SET_CONFIG',
+        bloquearSemEstoque: cfg.bloquear_venda_sem_estoque,
+        permitirNegativo: cfg.permitir_estoque_negativo,
+      });
+    }).catch(() => {});
+  }, [profile?.empresa_id]);
 
   const terminal: Terminal | null = terminalByIdent || null;
   const depositoId = terminal?.deposito_id || '';
