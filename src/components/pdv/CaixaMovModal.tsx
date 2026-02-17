@@ -14,12 +14,13 @@ interface CaixaMovModalProps {
   onOpenChange: (open: boolean) => void;
   caixaId: string;
   empresaId: string;
+  defaultMode?: CashMoveOrigin;
 }
 
 export const CaixaMovModal = memo(function CaixaMovModal({
-  open, onOpenChange, caixaId, empresaId,
+  open, onOpenChange, caixaId, empresaId, defaultMode = 'sangria',
 }: CaixaMovModalProps) {
-  const [tipo, setTipo] = useState<CashMoveOrigin>('sangria');
+  const [tipo, setTipo] = useState<CashMoveOrigin>(defaultMode);
   const [valor, setValor] = useState('');
   const [obs, setObs] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +31,7 @@ export const CaixaMovModal = memo(function CaixaMovModal({
 
   useEffect(() => {
     if (open) {
-      setTipo('sangria');
+      setTipo(defaultMode);
       setValor('');
       setObs('');
       requestAnimationFrame(() => valorRef.current?.focus());

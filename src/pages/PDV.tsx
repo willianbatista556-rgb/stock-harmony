@@ -113,7 +113,7 @@ export default function PDV() {
   const [showCustomer, setShowCustomer] = useState(false);
   const [showDiscount, setShowDiscount] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [showCaixaMov, setShowCaixaMov] = useState(false);
+  const [caixaMovMode, setCaixaMovMode] = useState<'sangria' | 'suprimento' | null>(null);
   const [lastSale, setLastSale] = useState<{
     items: typeof state.items;
     pagamentos: Pagamento[];
@@ -272,13 +272,14 @@ export default function PDV() {
       }
     },
     onCustomer: () => setShowCustomer(true),
-    onCaixaMov: () => { if (caixaAberto && !budgetMode) setShowCaixaMov(true); },
+    onSuprimento: () => { if (caixaAberto && !budgetMode) setCaixaMovMode('suprimento'); },
+    onSangria: () => { if (caixaAberto && !budgetMode) setCaixaMovMode('sangria'); },
     onCancel: () => {
-      if (showCustomer || showDiscount || showHelp || showCaixaMov) {
+      if (showCustomer || showDiscount || showHelp || caixaMovMode) {
         setShowCustomer(false);
         setShowDiscount(false);
         setShowHelp(false);
-        setShowCaixaMov(false);
+        setCaixaMovMode(null);
       } else if (state.mode === 'payment') {
         dispatch({ type: 'SET_MODE', mode: 'normal' });
         setPaymentValue('');
@@ -620,10 +621,11 @@ export default function PDV() {
 
       {caixaAberto && user && profile?.empresa_id && (
         <CaixaMovModal
-          open={showCaixaMov}
-          onOpenChange={setShowCaixaMov}
+          open={!!caixaMovMode}
+          onOpenChange={(open) => { if (!open) setCaixaMovMode(null); }}
           caixaId={caixaAberto.id}
           empresaId={profile.empresa_id}
+          defaultMode={caixaMovMode || 'sangria'}
         />
       )}
     </div>
