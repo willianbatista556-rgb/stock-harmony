@@ -1,6 +1,7 @@
 import { memo, forwardRef } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/formatters';
 import { Produto } from '@/hooks/useProdutos';
@@ -55,7 +56,15 @@ export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
                 )}
               >
                 <div>
-                  <p className="font-semibold text-foreground">{produto.nome}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-foreground">{produto.nome}</p>
+                    {(estoqueMap[produto.id] ?? 0) <= 0 && (
+                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-1 font-semibold">
+                        <AlertTriangle className="w-3 h-3" />
+                        SEM ESTOQUE
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground font-mono">
                     {produto.sku && <span>SKU: {produto.sku}</span>}
                     {produto.ean && <span className="ml-3">EAN: {produto.ean}</span>}
