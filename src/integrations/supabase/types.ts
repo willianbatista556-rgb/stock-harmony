@@ -134,6 +134,7 @@ export type Database = {
         Row: {
           aberto_em: string
           deposito_id: string
+          diferenca: number | null
           empresa_id: string
           fechado_em: string | null
           id: string
@@ -142,11 +143,13 @@ export type Database = {
           terminal_id: string | null
           usuario_id: string
           valor_abertura: number
+          valor_contado: number | null
           valor_fechamento: number | null
         }
         Insert: {
           aberto_em?: string
           deposito_id: string
+          diferenca?: number | null
           empresa_id: string
           fechado_em?: string | null
           id?: string
@@ -155,11 +158,13 @@ export type Database = {
           terminal_id?: string | null
           usuario_id: string
           valor_abertura?: number
+          valor_contado?: number | null
           valor_fechamento?: number | null
         }
         Update: {
           aberto_em?: string
           deposito_id?: string
+          diferenca?: number | null
           empresa_id?: string
           fechado_em?: string | null
           id?: string
@@ -168,6 +173,7 @@ export type Database = {
           terminal_id?: string | null
           usuario_id?: string
           valor_abertura?: number
+          valor_contado?: number | null
           valor_fechamento?: number | null
         }
         Relationships: [
