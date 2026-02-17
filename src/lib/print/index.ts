@@ -4,12 +4,12 @@
 
 export { EscPosBuilder } from './escpos';
 export { webSerialTransport, autoReconnect, isWebSerialSupported } from './transport.webserial';
-export { buildReceipt } from './receipt.template';
+export { buildReceipt80mm } from './templates';
 export type { PrintTransport } from './transport.webserial';
 export type { ReceiptData, ReceiptItem, ReceiptPayment } from './types';
 
 import { webSerialTransport } from './transport.webserial';
-import { buildReceipt } from './receipt.template';
+import { buildReceipt80mm } from './templates';
 import type { ReceiptData } from './types';
 
 /**
@@ -22,7 +22,7 @@ export async function printReceipt(data: ReceiptData): Promise<boolean> {
       await webSerialTransport.connect();
     }
 
-    const bytes = buildReceipt(data);
+    const bytes = buildReceipt80mm(data);
     await webSerialTransport.write(bytes);
 
     return true;
