@@ -1268,6 +1268,14 @@ export type Database = {
       }
     }
     Functions: {
+      caixa_fechar: {
+        Args: {
+          p_caixa_id: string
+          p_observacao?: string
+          p_valor_contado: number
+        }
+        Returns: undefined
+      }
       caixa_resumo: { Args: { p_caixa_id: string }; Returns: Json }
       ensure_cliente_balcao: { Args: { p_empresa_id: string }; Returns: string }
       finalizar_venda: {
