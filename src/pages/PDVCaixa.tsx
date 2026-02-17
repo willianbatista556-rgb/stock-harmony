@@ -96,11 +96,7 @@ export default function PDVCaixa() {
   };
 
   const handleFechar = async () => {
-    if (!caixaAberto) return;
-    await fecharCaixaM.mutateAsync({
-      caixaId: caixaAberto.id,
-      valorFechamento: saldoAtual,
-    });
+    navigate('/pdv/caixa/fechar');
   };
 
   const handleSangria = async () => {

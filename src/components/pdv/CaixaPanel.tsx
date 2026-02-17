@@ -84,11 +84,11 @@ export function CaixaPanel({
             onClick={onFechar}
           >
             <DoorClosed className="w-4 h-4" />
-            Fechar Caixa
+            Fechamento Inteligente
           </Button>
 
           <p className="text-xs text-muted-foreground">
-            No MVP, o saldo final pode ser calculado depois via relatório.
+            Resumo automático, conferência e registro de sobra/quebra.
           </p>
         </>
       )}
