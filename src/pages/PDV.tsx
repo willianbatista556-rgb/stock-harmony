@@ -55,16 +55,33 @@ export default function PDV() {
   const createTerminal = useCreateTerminal();
   const { data: terminais = [] } = useTerminais();
 
-  // Auto-create terminal if not found
+  // Auto-create terminal if not found + ensure cliente balcão
   const [autoCreated, setAutoCreated] = useState(false);
   useEffect(() => {
     if (identLoading || autoCreated || terminalByIdent) return;
     if (!profile?.empresa_id || depositos.length === 0) return;
     createTerminal.mutate(
       { nome: 'Terminal PDV', depositoId: depositos[0].id, identificador: terminalIdentificador },
-      { onSuccess: () => setAutoCreated(true) }
+      {
+        onSuccess: () => {
+          setAutoCreated(true);
+          ensureClienteBalcao(profile.empresa_id!).then((balcId) => {
+            dispatch({ type: 'SET_CUSTOMER', customer: { id: balcId, nome: 'CLIENTE BALCAO' } });
+          }).catch(() => {});
+        },
+      }
     );
   }, [identLoading, terminalByIdent, autoCreated, profile?.empresa_id, depositos, terminalIdentificador]);
+
+  // When terminal already exists, ensure cliente balcão on first load
+  const [balcaoLoaded, setBalcaoLoaded] = useState(false);
+  useEffect(() => {
+    if (!terminalByIdent || balcaoLoaded || !profile?.empresa_id) return;
+    setBalcaoLoaded(true);
+    ensureClienteBalcao(profile.empresa_id).then((balcId) => {
+      dispatch({ type: 'SET_CUSTOMER', customer: { id: balcId, nome: 'CLIENTE BALCAO' } });
+    }).catch(() => {});
+  }, [terminalByIdent, balcaoLoaded, profile?.empresa_id]);
 
   const terminal: Terminal | null = terminalByIdent || null;
   const depositoId = terminal?.deposito_id || '';
@@ -119,17 +136,6 @@ export default function PDV() {
     return () => clearTimeout(t);
   }, []);
 
-  // ── Auto-set Cliente Balcão on mount ───────────────────
-  useEffect(() => {
-    if (!profile?.empresa_id || state.customer) return;
-    ensureClienteBalcao(profile.empresa_id)
-      .then((clienteId) => {
-        dispatch({ type: 'SET_CUSTOMER', customer: { id: clienteId, nome: 'CLIENTE BALCAO' } });
-      })
-      .catch(() => {
-        // silent – balcão is optional
-      });
-  }, [profile?.empresa_id]);
 
   // ── Client-side product search ──────────────────────────
   useEffect(() => {
