@@ -34,6 +34,8 @@ export type PDVModal = 'customer' | 'discount' | 'hotkeys' | 'sangria' | 'suprim
 export interface PDVConfig {
   bloquearSemEstoque: boolean;
   permitirNegativo: boolean;
+  printerCodepage: string;
+  printerBaudrate: number;
 }
 
 export interface PDVState {

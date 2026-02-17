@@ -97,6 +97,8 @@ export default function PDV() {
         type: 'SET_CONFIG',
         bloquearSemEstoque: cfg.bloquear_venda_sem_estoque,
         permitirNegativo: cfg.permitir_estoque_negativo,
+        printerCodepage: cfg.printer_codepage,
+        printerBaudrate: cfg.printer_baudrate,
       });
     }).catch(() => {});
   }, [profile?.empresa_id]);
@@ -264,7 +266,7 @@ export default function PDV() {
     dispatch({ type: 'SET_LAST_RECEIPT', receipt });
 
     // Auto-print (non-blocking: show error but don't prevent sale completion)
-    printReceipt(receipt).catch((err) => {
+    printReceipt(receipt, { codepage: (state.config?.printerCodepage as any) || undefined }).catch((err) => {
       console.warn('[PDV] Impressão automática falhou:', err);
       toast.error('Falha na impressão automática', {
         description: err instanceof Error ? err.message : 'Erro desconhecido',
@@ -615,7 +617,7 @@ export default function PDV() {
         {/* Right — Summary + Payment */}
         <div className="flex-[2] flex flex-col min-h-0 bg-muted/30">
           <div className="flex-1 p-4 flex flex-col gap-4 overflow-auto">
-            <PDVCartSummary items={state.items} descontoGeral={descontoGeral} total={total} lastReceipt={state.lastReceipt} />
+            <PDVCartSummary items={state.items} descontoGeral={descontoGeral} total={total} lastReceipt={state.lastReceipt} printerCodepage={state.config?.printerCodepage} />
 
             {state.mode === 'payment' && !budgetMode && (
               <PDVPaymentPanel

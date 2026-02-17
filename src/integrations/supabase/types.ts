@@ -428,6 +428,8 @@ export type Database = {
           created_at: string
           empresa_id: string
           permitir_estoque_negativo: boolean
+          printer_baudrate: number
+          printer_codepage: string
           updated_at: string
         }
         Insert: {
@@ -435,6 +437,8 @@ export type Database = {
           created_at?: string
           empresa_id: string
           permitir_estoque_negativo?: boolean
+          printer_baudrate?: number
+          printer_codepage?: string
           updated_at?: string
         }
         Update: {
@@ -442,6 +446,8 @@ export type Database = {
           created_at?: string
           empresa_id?: string
           permitir_estoque_negativo?: boolean
+          printer_baudrate?: number
+          printer_codepage?: string
           updated_at?: string
         }
         Relationships: [

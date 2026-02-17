@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, ShieldCheck, PackageMinus, AlertTriangle, Loader2, Building2, Save } from 'lucide-react';
+import { Settings, ShieldCheck, PackageMinus, AlertTriangle, Loader2, Building2, Save, Printer } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -79,6 +79,16 @@ export default function Configuracoes() {
       { [field]: value },
       {
         onSuccess: () => toast.success('Configuração salva'),
+        onError: (err) => toast.error(`Erro ao salvar: ${err.message}`),
+      }
+    );
+  };
+
+  const handlePrinterChange = (field: 'printer_codepage' | 'printer_baudrate', value: string | number) => {
+    updateConfig.mutate(
+      { [field]: value } as any,
+      {
+        onSuccess: () => toast.success('Configuração de impressora salva'),
         onError: (err) => toast.error(`Erro ao salvar: ${err.message}`),
       }
     );
@@ -282,6 +292,65 @@ export default function Configuracoes() {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Printer config card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Printer className="w-5 h-5 text-primary" />
+            <CardTitle className="text-lg">Impressora Térmica</CardTitle>
+          </div>
+          <CardDescription>
+            Configure a comunicação com a impressora térmica ESC/POS.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="codepage" className="text-sm font-semibold">Codepage</Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Define a tabela de caracteres para acentos. Use CP860 para impressoras brasileiras antigas.
+              </p>
+              <Select
+                value={config?.printer_codepage ?? 'utf8'}
+                onValueChange={(v) => handlePrinterChange('printer_codepage', v)}
+                disabled={updateConfig.isPending}
+              >
+                <SelectTrigger id="codepage">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="utf8">UTF-8 (modernas)</SelectItem>
+                  <SelectItem value="cp860">CP860 (pt-BR clássico)</SelectItem>
+                  <SelectItem value="cp858">CP858 (europeu + €)</SelectItem>
+                  <SelectItem value="cp437">CP437 (DOS padrão)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="baudrate" className="text-sm font-semibold">Baudrate</Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Velocidade de comunicação serial. 9600 é o mais comum.
+              </p>
+              <Select
+                value={String(config?.printer_baudrate ?? 9600)}
+                onValueChange={(v) => handlePrinterChange('printer_baudrate', parseInt(v))}
+                disabled={updateConfig.isPending}
+              >
+                <SelectTrigger id="baudrate">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="9600">9600</SelectItem>
+                  <SelectItem value="19200">19200</SelectItem>
+                  <SelectItem value="38400">38400</SelectItem>
+                  <SelectItem value="115200">115200</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
