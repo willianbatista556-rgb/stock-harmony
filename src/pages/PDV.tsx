@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
 import { ShoppingCart, Banknote, AlertTriangle, LogOut, User, FileText, Landmark, ArrowDownUp, Printer } from 'lucide-react';
+import { printReceipt } from '@/lib/print';
+import type { ReceiptData } from '@/lib/print/types';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -224,7 +226,7 @@ export default function PDV() {
       total,
     };
 
-    await finalizarVenda.mutateAsync({
+    const vendaId = await finalizarVenda.mutateAsync({
       items: state.items,
       pagamentos: pags,
       descontoGeral,
@@ -232,6 +234,41 @@ export default function PDV() {
       customer: state.customer,
       caixaId: caixaAberto?.id || null,
       subtotal: subtotalBruto,
+    });
+
+    const formaMap: Record<string, string> = {
+      dinheiro: 'Dinheiro', credito: 'Credito', debito: 'Debito', pix: 'Pix',
+    };
+
+    const receipt: ReceiptData = {
+      empresaNome: 'SUA EMPRESA',
+      vendaId: vendaId || new Date().getTime().toString(36).toUpperCase(),
+      dataIso: new Date().toISOString(),
+      clienteNome: state.customer?.nome ?? 'CLIENTE BALCAO',
+      itens: state.items.map((it) => ({
+        nome: it.produto.nome,
+        qtd: it.qtd,
+        preco: it.preco_unit,
+        subtotal: it.subtotal,
+      })),
+      subtotal: subtotalBruto,
+      desconto: descontoGeral,
+      total,
+      pagamentos: pags.map((p) => ({
+        metodo: formaMap[p.forma] || p.forma,
+        valor: p.valor,
+      })),
+      footer: 'Nao e documento fiscal.',
+    };
+
+    dispatch({ type: 'SET_LAST_RECEIPT', receipt });
+
+    // Auto-print (non-blocking: show error but don't prevent sale completion)
+    printReceipt(receipt).catch((err) => {
+      console.warn('[PDV] Impressão automática falhou:', err);
+      toast.error('Falha na impressão automática', {
+        description: err instanceof Error ? err.message : 'Erro desconhecido',
+      });
     });
 
     setLastSale(saleData);
