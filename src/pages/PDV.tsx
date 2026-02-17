@@ -523,6 +523,7 @@ export default function PDV() {
                 setSearchQuery('');
                 searchInputRef.current?.focus();
               }}
+              estoqueMap={estoqueMap}
             />
           </div>
 

@@ -14,10 +14,11 @@ interface PDVSearchProps {
   results: Produto[];
   selectedIndex: number;
   onSelectProduct: (produto: Produto) => void;
+  estoqueMap?: Record<string, number>;
 }
 
 export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
-  function PDVSearch({ query, onQueryChange, onFocus, onClear, isSearchMode, results, selectedIndex, onSelectProduct }, ref) {
+  function PDVSearch({ query, onQueryChange, onFocus, onClear, isSearchMode, results, selectedIndex, onSelectProduct, estoqueMap = {} }, ref) {
     return (
       <>
         <div className="relative">
@@ -58,9 +59,17 @@ export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
                     {produto.ean && <span className="ml-3">EAN: {produto.ean}</span>}
                   </p>
                 </div>
-                <span className="font-bold tabular-nums font-mono text-lg text-primary">
-                  {formatCurrency(produto.preco_venda || 0)}
-                </span>
+                <div className="flex flex-col items-end gap-0.5">
+                  <span className="font-bold tabular-nums font-mono text-lg text-primary">
+                    {formatCurrency(produto.preco_venda || 0)}
+                  </span>
+                  <span className={cn(
+                    'text-xs font-mono tabular-nums',
+                    (estoqueMap[produto.id] ?? 0) > 0 ? 'text-success' : 'text-destructive'
+                  )}>
+                    Est: {estoqueMap[produto.id] ?? 0}
+                  </span>
+                </div>
               </button>
             ))}
           </div>
