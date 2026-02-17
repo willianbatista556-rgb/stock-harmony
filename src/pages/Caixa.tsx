@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Landmark, DoorOpen, DoorClosed, ArrowDownCircle, ArrowUpCircle,
   TrendingUp, TrendingDown, Clock, Calendar,
@@ -25,7 +25,7 @@ import {
 import { formatCurrency, formatDate, formatTime } from '@/lib/formatters';
 import { useDepositos } from '@/hooks/useDepositos';
 import {
-  useCaixaAberto, useCaixasHistorico, useCaixaMovimentacoes,
+  useCaixaAberto, useCaixasAbertos, useCaixasHistorico, useCaixaMovimentacoes,
   useFluxoCaixa, useAbrirCaixa, useFecharCaixa, useSangria, useSuprimento,
   CaixaMovimentacao,
 } from '@/hooks/useCaixa';
@@ -41,11 +41,24 @@ const tipoColor: Record<string, string> = {
 };
 
 export default function Caixa() {
-  const { data: caixaAberto, isLoading: loadingCaixa } = useCaixaAberto();
+  const { data: caixasAbertos = [] } = useCaixasAbertos();
   const { data: historico = [] } = useCaixasHistorico();
-  const { data: movimentacoes = [] } = useCaixaMovimentacoes(caixaAberto?.id);
   const { data: fluxoDiario = [] } = useFluxoCaixa();
   const { data: depositos = [] } = useDepositos();
+
+  // Selected deposit for viewing/managing
+  const [selectedDepositoId, setSelectedDepositoId] = useState('');
+
+  // Auto-select first deposit with open caixa, or first deposit
+  useEffect(() => {
+    if (!selectedDepositoId && depositos.length > 0) {
+      const openDep = caixasAbertos.find(c => c.status === 'aberto');
+      setSelectedDepositoId(openDep?.deposito_id || depositos[0].id);
+    }
+  }, [depositos, caixasAbertos, selectedDepositoId]);
+
+  const caixaAberto = caixasAbertos.find(c => c.deposito_id === selectedDepositoId) || null;
+  const { data: movimentacoes = [] } = useCaixaMovimentacoes(caixaAberto?.id);
 
   const abrirCaixa = useAbrirCaixa();
   const fecharCaixa = useFecharCaixa();
@@ -161,31 +174,53 @@ export default function Caixa() {
           </div>
           <div>
             <h1 className="text-2xl font-display font-bold text-foreground">Caixa</h1>
-            <p className="text-sm text-muted-foreground">Controle de caixa e fluxo financeiro</p>
+            <p className="text-sm text-muted-foreground">Controle de caixa por terminal (depósito)</p>
           </div>
         </div>
 
-        {!caixaAberto ? (
-          <Button onClick={() => setShowAbrir(true)} className="gradient-primary text-primary-foreground gap-2">
-            <DoorOpen className="w-4 h-4" /> Abrir Caixa
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <Badge className="bg-success/10 text-success border-success/20 px-3 py-1.5 font-mono">
-              <Clock className="w-3 h-3 mr-1.5" />
-              Aberto desde {formatTime(caixaAberto.aberto_em)}
-            </Badge>
-            <Button variant="outline" size="sm" onClick={() => { setValorMov(''); setDescricaoMov(''); setShowSangria(true); }} className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
-              <ArrowDownCircle className="w-4 h-4" /> Sangria
+        <div className="flex items-center gap-3">
+          {/* Terminal/Deposit selector */}
+          <Select value={selectedDepositoId} onValueChange={setSelectedDepositoId}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Selecione o terminal" />
+            </SelectTrigger>
+            <SelectContent>
+              {depositos.map(d => {
+                const isOpen = caixasAbertos.some(c => c.deposito_id === d.id);
+                return (
+                  <SelectItem key={d.id} value={d.id}>
+                    <span className="flex items-center gap-2">
+                      {d.nome}
+                      {isOpen && <span className="w-2 h-2 rounded-full bg-success inline-block" />}
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+
+          {!caixaAberto ? (
+            <Button onClick={() => { setDepositoId(selectedDepositoId); setShowAbrir(true); }} className="gradient-primary text-primary-foreground gap-2">
+              <DoorOpen className="w-4 h-4" /> Abrir Caixa
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { setValorMov(''); setDescricaoMov(''); setShowSuprimento(true); }} className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10">
-              <ArrowUpCircle className="w-4 h-4" /> Suprimento
-            </Button>
-            <Button variant="destructive" size="sm" onClick={() => setShowFechar(true)} className="gap-1.5">
-              <DoorClosed className="w-4 h-4" /> Fechar Caixa
-            </Button>
-          </div>
-        )}
+          ) : (
+            <>
+              <Badge className="bg-success/10 text-success border-success/20 px-3 py-1.5 font-mono">
+                <Clock className="w-3 h-3 mr-1.5" />
+                Aberto desde {formatTime(caixaAberto.aberto_em)}
+              </Badge>
+              <Button variant="outline" size="sm" onClick={() => { setValorMov(''); setDescricaoMov(''); setShowSangria(true); }} className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10">
+                <ArrowDownCircle className="w-4 h-4" /> Sangria
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => { setValorMov(''); setDescricaoMov(''); setShowSuprimento(true); }} className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10">
+                <ArrowUpCircle className="w-4 h-4" /> Suprimento
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => setShowFechar(true)} className="gap-1.5">
+                <DoorClosed className="w-4 h-4" /> Fechar Caixa
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Summary Cards */}

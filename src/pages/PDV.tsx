@@ -42,11 +42,18 @@ import { ReceiptModal } from '@/components/pdv/ReceiptModal';
 export default function PDV() {
   const navigate = useNavigate();
   const { user, profile, userRole, loading: authLoading } = useAuth();
-  const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAberto();
   const { data: produtos = [] } = useProdutos();
   const { data: depositos = [] } = useDepositos();
   const finalizarVenda = useFinalizarVenda();
   const salvarOrcamento = useSalvarOrcamento();
+
+  // ── Local UI state ──────────────────────────────────────
+  const [budgetMode, setBudgetMode] = useState(false);
+  const canBudget = userRole?.role === 'Admin' || userRole?.role === 'Gerente';
+  const [depositoId, setDepositoId] = useState('');
+
+  // Caixa lookup: per deposit (terminal model)
+  const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAberto(depositoId || undefined);
 
   // ── Central state (useReducer) ──────────────────────────
   const [state, dispatch] = useReducer(pdvReducer, initialPDVState);
@@ -56,10 +63,6 @@ export default function PDV() {
   const descontoGeral = getDescontoGeral(state);
   const subtotalBruto = getSubtotalBruto(state);
 
-  // ── Local UI state ──────────────────────────────────────
-  const [budgetMode, setBudgetMode] = useState(false);
-  const canBudget = userRole?.role === 'Admin' || userRole?.role === 'Gerente';
-  const [depositoId, setDepositoId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Produto[]>([]);
   const [searchSelectedIndex, setSearchSelectedIndex] = useState(0);
@@ -316,8 +319,9 @@ export default function PDV() {
     );
   }
 
-  // 4. No open caixa → redirect to /caixa (unless budget mode allowed)
-  if (!caixaAberto && !budgetMode) {
+  // 4. No open caixa for selected deposit (unless budget mode)
+  if (!caixaAberto && !budgetMode && !caixaLoading) {
+    const depositoNome = depositos.find(d => d.id === depositoId)?.nome || 'selecionado';
     return (
       <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-6">
         <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
@@ -326,12 +330,30 @@ export default function PDV() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-display font-bold text-foreground">Caixa não aberto</h1>
           <p className="text-muted-foreground max-w-md">
-            Para realizar vendas no PDV é necessário abrir um caixa primeiro.
+            Nenhum caixa aberto no depósito <strong>{depositoNome}</strong>. Abra o caixa deste terminal ou selecione outro depósito.
           </p>
           <p className="text-xs text-muted-foreground">
-            Usuário: {profile.nome || profile.email} · Papel: {userRole?.role || '—'}
+            Operador: {profile.nome || profile.email} · Papel: {userRole?.role || '—'}
           </p>
         </div>
+
+        {/* Deposit selector */}
+        {depositos.length > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Terminal:</span>
+            <Select value={depositoId} onValueChange={setDepositoId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Depósito" />
+              </SelectTrigger>
+              <SelectContent>
+                {depositos.map(d => (
+                  <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
             <LogOut className="w-4 h-4" />
@@ -387,9 +409,9 @@ export default function PDV() {
             <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px] font-bold">F3</kbd>
           </button>
 
-          <Select value={depositoId} onValueChange={setDepositoId}>
+          <Select value={depositoId} onValueChange={setDepositoId} disabled={state.items.length > 0}>
             <SelectTrigger className="w-[160px] h-8 text-sm">
-              <SelectValue placeholder="Depósito" />
+              <SelectValue placeholder="Terminal" />
             </SelectTrigger>
             <SelectContent>
               {depositos.map(d => (
