@@ -422,6 +422,38 @@ export type Database = {
           },
         ]
       }
+      empresa_config: {
+        Row: {
+          bloquear_venda_sem_estoque: boolean
+          created_at: string
+          empresa_id: string
+          permitir_estoque_negativo: boolean
+          updated_at: string
+        }
+        Insert: {
+          bloquear_venda_sem_estoque?: boolean
+          created_at?: string
+          empresa_id: string
+          permitir_estoque_negativo?: boolean
+          updated_at?: string
+        }
+        Update: {
+          bloquear_venda_sem_estoque?: boolean
+          created_at?: string
+          empresa_id?: string
+          permitir_estoque_negativo?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_config_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresas: {
         Row: {
           ativa: boolean | null
