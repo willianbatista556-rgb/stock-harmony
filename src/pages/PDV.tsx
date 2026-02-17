@@ -11,6 +11,7 @@ import {
 } from '@/hooks/useTerminais';
 import { useDepositos } from '@/hooks/useDepositos';
 import { useCaixaAbertoPorTerminal } from '@/hooks/useCaixa';
+import { useEstoquePorDeposito } from '@/hooks/useEstoquePorDeposito';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -101,6 +102,9 @@ export default function PDV() {
   const terminal: Terminal | null = terminalByIdent || null;
   const depositoId = terminal?.deposito_id || '';
 
+  // ── Stock map for current deposit (UX blocking) ─────────
+  const { data: estoqueMap = {} } = useEstoquePorDeposito(depositoId || undefined);
+
   // ── Local UI state ──────────────────────────────────────
   const [budgetMode, setBudgetMode] = useState(false);
   const canBudget = userRole?.role === 'Admin' || userRole?.role === 'Gerente';
@@ -174,6 +178,23 @@ export default function PDV() {
     }, 50);
     return () => clearTimeout(t);
   }, [state.mode]);
+
+  // ── Stock check helper (UX only, RPC still validates) ────
+  const canAddProduct = useCallback((produto: Produto): boolean => {
+    const bloqueia = state.config?.bloquearSemEstoque ?? true;
+    const permiteNegativo = state.config?.permitirNegativo ?? false;
+
+    if (bloqueia && !permiteNegativo) {
+      const estoque = estoqueMap[produto.id] ?? 0;
+      // Check if already in cart — available = stock - qty already in cart
+      const inCart = state.items.find(i => i.produto.id === produto.id)?.qtd ?? 0;
+      if (estoque - inCart <= 0) {
+        toast.error(`Produto "${produto.nome}" sem estoque. Venda bloqueada.`);
+        return false;
+      }
+    }
+    return true;
+  }, [state.config, estoqueMap, state.items]);
 
   // ── Handlers ────────────────────────────────────────────
   const handleAddPayment = useCallback(() => {
@@ -316,12 +337,14 @@ export default function PDV() {
     },
     onEnter: () => {
       if (state.mode === 'search' && searchResults.length > 0) {
-        dispatch({ type: 'ADD_ITEM', produto: searchResults[searchSelectedIndex], keepSearchMode: true });
+        const produto = searchResults[searchSelectedIndex];
+        if (!canAddProduct(produto)) return;
+        dispatch({ type: 'ADD_ITEM', produto, keepSearchMode: true });
         setSearchQuery('');
         setTimeout(() => searchInputRef.current?.focus(), 50);
       }
     },
-  }), [state, restante, searchResults, searchSelectedIndex, caixaAberto, budgetMode]);
+  }), [state, restante, searchResults, searchSelectedIndex, caixaAberto, budgetMode, canAddProduct]);
 
   usePdvHotkeys(hotkeyHandlers);
 
@@ -495,6 +518,7 @@ export default function PDV() {
               results={searchResults}
               selectedIndex={searchSelectedIndex}
               onSelectProduct={(produto) => {
+                if (!canAddProduct(produto)) return;
                 dispatch({ type: 'ADD_ITEM', produto, keepSearchMode: true });
                 setSearchQuery('');
                 searchInputRef.current?.focus();
