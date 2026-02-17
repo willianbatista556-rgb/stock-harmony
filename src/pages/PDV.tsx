@@ -615,7 +615,7 @@ export default function PDV() {
         {/* Right — Summary + Payment */}
         <div className="flex-[2] flex flex-col min-h-0 bg-muted/30">
           <div className="flex-1 p-4 flex flex-col gap-4 overflow-auto">
-            <PDVCartSummary items={state.items} descontoGeral={descontoGeral} total={total} />
+            <PDVCartSummary items={state.items} descontoGeral={descontoGeral} total={total} lastReceipt={state.lastReceipt} />
 
             {state.mode === 'payment' && !budgetMode && (
               <PDVPaymentPanel
