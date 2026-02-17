@@ -1502,6 +1502,14 @@ export type Database = {
         Args: { p_inventario_id: string }
         Returns: undefined
       }
+      inventario_count_barcode: {
+        Args: {
+          p_barcode: string
+          p_inventario_id: string
+          p_quantidade?: number
+        }
+        Returns: undefined
+      }
       inventario_finalizar: {
         Args: { p_inventario_id: string }
         Returns: undefined
