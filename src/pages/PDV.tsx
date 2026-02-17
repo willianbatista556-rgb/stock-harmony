@@ -28,6 +28,7 @@ import {
 } from '@/lib/pdv';
 import { useSalvarOrcamento } from '@/lib/pdv/pdv.api';
 import { ensureClienteBalcao } from '@/lib/pdv/pdv.customers.api';
+import { criarMovimentacaoCaixa } from '@/lib/pdv/pdv.caixa.api';
 
 // PDV UI components
 import { PDVSearch } from '@/components/pdv/PDVSearch';
@@ -612,15 +613,20 @@ export default function PDV() {
         />
       )}
 
-      {caixaAberto && user && profile?.empresa_id && (
+      {(state.modal === 'suprimento' || state.modal === 'sangria') && profile?.empresa_id && caixaAberto?.id ? (
         <CaixaMovModal
-          open={state.modal === 'sangria' || state.modal === 'suprimento'}
-          onOpenChange={(open) => { if (!open) dispatch({ type: 'SET_MODAL', modal: null }); }}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) {
+              dispatch({ type: 'SET_MODAL', modal: null });
+              requestAnimationFrame(() => searchInputRef.current?.focus());
+            }
+          }}
           caixaId={caixaAberto.id}
           empresaId={profile.empresa_id}
-          defaultMode={(state.modal === 'sangria' || state.modal === 'suprimento') ? state.modal : 'sangria'}
+          defaultMode={state.modal}
         />
-      )}
+      ) : null}
     </div>
   );
 }
