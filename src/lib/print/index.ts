@@ -1,50 +1,29 @@
 /**
  * Print module public API.
- *
- * Usage:
- *   import { printReceipt, connectPrinter, isPrinterConnected } from '@/lib/print';
  */
 
-export { EscPosBuilder, CMD } from './escpos';
+export { EscPosBuilder } from './escpos';
 export { webSerialTransport, autoReconnect, isWebSerialSupported } from './transport.webserial';
 export { buildReceipt } from './receipt.template';
 export type { PrintTransport } from './transport.webserial';
+export type { ReceiptData, ReceiptItem, ReceiptPayment } from './types';
 
 import { webSerialTransport } from './transport.webserial';
 import { buildReceipt } from './receipt.template';
-import type { PDVItem, Pagamento, PDVCustomer } from '@/lib/pdv/pdv.types';
-
-interface PrintReceiptOptions {
-  items: PDVItem[];
-  pagamentos: Pagamento[];
-  customer: PDVCustomer | null;
-  subtotal: number;
-  desconto: number;
-  total: number;
-  isBudget?: boolean;
-  empresaNome?: string;
-  terminalNome?: string;
-  operador?: string;
-  openDrawer?: boolean;
-}
+import type { ReceiptData } from './types';
 
 /**
- * High-level: connect (if needed) + print receipt + optional cash drawer.
+ * High-level: connect (if needed) + print receipt.
  * Returns true if printed successfully.
  */
-export async function printReceipt(options: PrintReceiptOptions): Promise<boolean> {
+export async function printReceipt(data: ReceiptData): Promise<boolean> {
   try {
     if (!webSerialTransport.isConnected()) {
       await webSerialTransport.connect();
     }
 
-    const bytes = buildReceipt(options);
+    const bytes = buildReceipt(data);
     await webSerialTransport.write(bytes);
-
-    if (options.openDrawer) {
-      const { CMD } = await import('./escpos');
-      await webSerialTransport.write(CMD.CASH_DRAWER);
-    }
 
     return true;
   } catch (err) {

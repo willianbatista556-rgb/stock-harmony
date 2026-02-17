@@ -57,10 +57,28 @@ export const ReceiptModal = memo(function ReceiptModal({
   const handleEscPosPrint = async () => {
     setEscPosPrinting(true);
     try {
+      const formaMap: Record<string, string> = {
+        dinheiro: 'Dinheiro', credito: 'Credito', debito: 'Debito', pix: 'Pix',
+      };
       await printReceipt({
-        items, pagamentos, customer, subtotal, desconto, total, isBudget,
-        empresaNome, terminalNome, operador,
-        openDrawer: !isBudget,
+        vendaId: new Date().getTime().toString(36).toUpperCase(),
+        dataIso: new Date().toISOString(),
+        empresaNome,
+        clienteNome: customer?.nome,
+        itens: items.map(i => ({
+          nome: i.produto.nome,
+          qtd: i.qtd,
+          preco: i.preco_unit,
+          subtotal: i.subtotal,
+        })),
+        subtotal,
+        desconto,
+        total,
+        pagamentos: pagamentos.map(p => ({
+          metodo: formaMap[p.forma] || p.forma,
+          valor: p.valor,
+        })),
+        footer: isBudget ? 'Este documento e apenas um orcamento\ne nao possui valor fiscal.' : undefined,
       });
       toast.success('Cupom impresso com sucesso!');
     } catch (err: unknown) {
