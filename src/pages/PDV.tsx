@@ -40,13 +40,13 @@ import { DiscountModal } from '@/components/pdv/DiscountModal';
 import { ReceiptModal } from '@/components/pdv/ReceiptModal';
 
 export default function PDV() {
+  const navigate = useNavigate();
+  const { user, profile, userRole, loading: authLoading } = useAuth();
+  const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAberto();
   const { data: produtos = [] } = useProdutos();
   const { data: depositos = [] } = useDepositos();
   const finalizarVenda = useFinalizarVenda();
   const salvarOrcamento = useSalvarOrcamento();
-  const navigate = useNavigate();
-  const { data: caixaAberto } = useCaixaAberto();
-  const { userRole } = useAuth();
 
   // ── Central state (useReducer) ──────────────────────────
   const [state, dispatch] = useReducer(pdvReducer, initialPDVState);
@@ -275,9 +275,48 @@ export default function PDV() {
 
   usePdvHotkeys(hotkeyHandlers);
 
-  // ── Render ──────────────────────────────────────────────
+  // ── Real Bootstrap Guards (after all hooks) ─────────────
 
-  // Block PDV if no cash register is open AND not in budget mode
+  // 1. Loading auth or caixa data
+  if (authLoading || caixaLoading) {
+    return (
+      <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-4">
+        <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center animate-pulse">
+          <ShoppingCart className="w-6 h-6 text-primary-foreground" />
+        </div>
+        <p className="text-muted-foreground text-sm">Carregando PDV…</p>
+      </div>
+    );
+  }
+
+  // 2. Not authenticated → /auth
+  if (!user) {
+    navigate('/auth', { replace: true });
+    return null;
+  }
+
+  // 3. No empresa linked
+  if (!profile?.empresa_id) {
+    return (
+      <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-6">
+        <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
+          <AlertTriangle className="w-8 h-8 text-destructive" />
+        </div>
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl font-display font-bold text-foreground">Empresa não configurada</h1>
+          <p className="text-muted-foreground max-w-md">
+            Seu perfil não está vinculado a nenhuma empresa. Contacte o administrador.
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
+          <LogOut className="w-4 h-4" />
+          Voltar ao Dashboard
+        </Button>
+      </div>
+    );
+  }
+
+  // 4. No open caixa → redirect to /caixa (unless budget mode allowed)
   if (!caixaAberto && !budgetMode) {
     return (
       <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-6">
@@ -287,7 +326,10 @@ export default function PDV() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-display font-bold text-foreground">Caixa não aberto</h1>
           <p className="text-muted-foreground max-w-md">
-            Para realizar vendas no PDV é necessário abrir um caixa primeiro. Acesse a página de Caixa para iniciar uma sessão.
+            Para realizar vendas no PDV é necessário abrir um caixa primeiro.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Usuário: {profile.nome || profile.email} · Papel: {userRole?.role || '—'}
           </p>
         </div>
         <div className="flex gap-3">
