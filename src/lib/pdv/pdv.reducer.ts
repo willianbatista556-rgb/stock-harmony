@@ -1,5 +1,5 @@
 import { Produto } from '@/hooks/useProdutos';
-import { PDVState, PDVItem, Pagamento, PDVMode, PDVCustomer, PDVDiscount } from './pdv.types';
+import { PDVState, PDVItem, Pagamento, PDVMode, PDVCustomer, PDVDiscount, PDVModal } from './pdv.types';
 
 // ── Action types ──────────────────────────────────────────────
 export type PDVAction =
@@ -13,6 +13,7 @@ export type PDVAction =
   | { type: 'SET_DISCOUNT'; discount: PDVDiscount }
   | { type: 'ADD_PAGAMENTO'; pagamento: Pagamento }
   | { type: 'REMOVE_PAGAMENTO'; index: number }
+  | { type: 'SET_MODAL'; modal: PDVModal }
   | { type: 'CLEAR_SALE' };
 
 // ── Initial state ─────────────────────────────────────────────
@@ -20,6 +21,7 @@ export const initialPDVState: PDVState = {
   items: [],
   selectedIndex: -1,
   mode: 'normal',
+  modal: null,
   customer: null,
   discount: { tipo: 'valor', valor: 0 },
   pagamentos: [],
@@ -117,6 +119,9 @@ export function pdvReducer(state: PDVState, action: PDVAction): PDVState {
 
     case 'REMOVE_PAGAMENTO':
       return { ...state, pagamentos: state.pagamentos.filter((_, i) => i !== action.index) };
+
+    case 'SET_MODAL':
+      return { ...state, modal: action.modal };
 
     case 'CLEAR_SALE':
       return { ...initialPDVState };
