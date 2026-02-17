@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresaConfig, useUpdateEmpresaConfig } from '@/hooks/useEmpresaConfig';
@@ -105,6 +106,29 @@ export default function Configuracoes() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 p-6 md:p-8 space-y-8 max-w-3xl">
+      {/* Page header */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+            <Settings className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">
+              Configurações
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Gerencie as regras de operação da empresa
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Empresa data card */}
       <Card>
         <CardHeader>
@@ -144,12 +168,22 @@ export default function Configuracoes() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="emp-ramo" className="text-sm font-semibold">Ramo de Atividade</Label>
-                  <Input
-                    id="emp-ramo"
+                  <Select
                     value={empresaForm.ramo}
-                    onChange={(e) => handleEmpresaChange('ramo', e.target.value)}
-                    placeholder="Ex: Varejo, Alimentação..."
-                  />
+                    onValueChange={(v) => handleEmpresaChange('ramo', v)}
+                  >
+                    <SelectTrigger id="emp-ramo">
+                      <SelectValue placeholder="Selecione o ramo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="comércio">Comércio</SelectItem>
+                      <SelectItem value="serviços">Serviços</SelectItem>
+                      <SelectItem value="alimentação">Alimentação</SelectItem>
+                      <SelectItem value="indústria">Indústria</SelectItem>
+                      <SelectItem value="e-commerce">E-commerce</SelectItem>
+                      <SelectItem value="outro">Outro</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="flex justify-end pt-2">
@@ -170,28 +204,6 @@ export default function Configuracoes() {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-  return (
-    <div className="flex-1 p-6 md:p-8 space-y-8 max-w-3xl">
-      {/* Page header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-            <Settings className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">
-              Configurações
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Gerencie as regras de operação da empresa
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Stock rules card */}
       <Card>
