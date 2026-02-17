@@ -638,6 +638,118 @@ export type Database = {
           },
         ]
       }
+      orcamento_itens: {
+        Row: {
+          desconto: number | null
+          id: string
+          nome_snapshot: string | null
+          orcamento_id: string
+          preco_unit: number
+          produto_id: string
+          qtd: number
+          subtotal: number | null
+        }
+        Insert: {
+          desconto?: number | null
+          id?: string
+          nome_snapshot?: string | null
+          orcamento_id: string
+          preco_unit: number
+          produto_id: string
+          qtd?: number
+          subtotal?: number | null
+        }
+        Update: {
+          desconto?: number | null
+          id?: string
+          nome_snapshot?: string | null
+          orcamento_id?: string
+          preco_unit?: number
+          produto_id?: string
+          qtd?: number
+          subtotal?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamento_itens_orcamento_id_fkey"
+            columns: ["orcamento_id"]
+            isOneToOne: false
+            referencedRelation: "orcamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamento_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
+      orcamentos: {
+        Row: {
+          cliente_id: string | null
+          criado_em: string
+          desconto: number
+          empresa_id: string
+          id: string
+          observacao: string | null
+          status: string
+          subtotal: number
+          total: number
+          usuario_id: string
+          validade: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          criado_em?: string
+          desconto?: number
+          empresa_id: string
+          id?: string
+          observacao?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          usuario_id: string
+          validade?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          criado_em?: string
+          desconto?: number
+          empresa_id?: string
+          id?: string
+          observacao?: string | null
+          status?: string
+          subtotal?: number
+          total?: number
+          usuario_id?: string
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orcamentos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orcamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagamentos: {
         Row: {
           criado_em: string | null

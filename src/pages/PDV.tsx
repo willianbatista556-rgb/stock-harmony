@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
-import { ShoppingCart, Banknote, AlertTriangle, LogOut, User } from 'lucide-react';
+import { ShoppingCart, Banknote, AlertTriangle, LogOut, User, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useProdutos, Produto } from '@/hooks/useProdutos';
 import { useDepositos } from '@/hooks/useDepositos';
 import { useCaixaAberto } from '@/hooks/useCaixa';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
@@ -24,6 +25,7 @@ import {
   usePdvHotkeys,
   Pagamento, PDVDiscount,
 } from '@/lib/pdv';
+import { useSalvarOrcamento } from '@/lib/pdv/pdv.api';
 
 // PDV UI components
 import { PDVSearch } from '@/components/pdv/PDVSearch';
@@ -41,8 +43,10 @@ export default function PDV() {
   const { data: produtos = [] } = useProdutos();
   const { data: depositos = [] } = useDepositos();
   const finalizarVenda = useFinalizarVenda();
+  const salvarOrcamento = useSalvarOrcamento();
   const navigate = useNavigate();
   const { data: caixaAberto } = useCaixaAberto();
+  const { userRole } = useAuth();
 
   // ── Central state (useReducer) ──────────────────────────
   const [state, dispatch] = useReducer(pdvReducer, initialPDVState);
@@ -53,6 +57,8 @@ export default function PDV() {
   const subtotalBruto = getSubtotalBruto(state);
 
   // ── Local UI state ──────────────────────────────────────
+  const [budgetMode, setBudgetMode] = useState(false);
+  const canBudget = userRole?.role === 'Admin' || userRole?.role === 'Gerente';
   const [depositoId, setDepositoId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Produto[]>([]);
@@ -72,6 +78,7 @@ export default function PDV() {
     subtotal: number;
     desconto: number;
     total: number;
+    isBudget?: boolean;
   } | null>(null);
 
   // ── Refs ────────────────────────────────────────────────
@@ -138,7 +145,6 @@ export default function PDV() {
     if (!depositoId) { toast.error('Selecione um depósito'); return; }
     if (pags.length === 0) { toast.error('Adicione pelo menos um pagamento'); return; }
 
-    // Save for receipt before clearing
     const saleData = {
       items: [...state.items],
       pagamentos: pags,
@@ -162,6 +168,32 @@ export default function PDV() {
     setShowReceipt(true);
     dispatch({ type: 'CLEAR_SALE' });
   }, [state, depositoId, finalizarVenda, subtotalBruto, descontoGeral, total, caixaAberto]);
+
+  const handleSaveBudget = useCallback(async () => {
+    if (state.items.length === 0) { toast.error('Adicione itens ao orçamento'); return; }
+
+    const saleData = {
+      items: [...state.items],
+      pagamentos: [] as Pagamento[],
+      customer: state.customer,
+      subtotal: subtotalBruto,
+      desconto: descontoGeral,
+      total,
+      isBudget: true,
+    };
+
+    await salvarOrcamento.mutateAsync({
+      items: state.items,
+      descontoGeral,
+      customer: state.customer,
+      subtotal: subtotalBruto,
+      total,
+    });
+
+    setLastSale(saleData);
+    setShowReceipt(true);
+    dispatch({ type: 'CLEAR_SALE' });
+  }, [state, salvarOrcamento, subtotalBruto, descontoGeral, total]);
 
   const handleInlineConfirm = useCallback(() => {
     const val = parseFloat(inputValue);
@@ -245,8 +277,8 @@ export default function PDV() {
 
   // ── Render ──────────────────────────────────────────────
 
-  // Block PDV if no cash register is open
-  if (!caixaAberto) {
+  // Block PDV if no cash register is open AND not in budget mode
+  if (!caixaAberto && !budgetMode) {
     return (
       <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-6">
         <div className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center">
@@ -263,6 +295,12 @@ export default function PDV() {
             <LogOut className="w-4 h-4" />
             Voltar
           </Button>
+          {canBudget && (
+            <Button variant="outline" onClick={() => setBudgetMode(true)} className="gap-2 border-accent text-accent-foreground">
+              <FileText className="w-4 h-4" />
+              Modo Orçamento
+            </Button>
+          )}
           <Button onClick={() => navigate('/caixa')} className="gap-2 gradient-primary text-primary-foreground">
             <Banknote className="w-4 h-4" />
             Abrir Caixa
@@ -281,6 +319,11 @@ export default function PDV() {
             <ShoppingCart className="w-5 h-5 text-primary-foreground" />
           </div>
           <h1 className="text-lg font-display font-bold text-foreground tracking-tight">PDV</h1>
+          {budgetMode && (
+            <Badge className="text-xs px-3 py-1 font-mono font-bold tracking-wider bg-accent text-accent-foreground">
+              ORÇAMENTO
+            </Badge>
+          )}
           <Badge className={cn('text-xs px-3 py-1 font-mono font-bold tracking-wider', modeColor[state.mode])}>
             {modeLabel[state.mode]}
           </Badge>
@@ -372,7 +415,7 @@ export default function PDV() {
           <div className="flex-1 p-4 flex flex-col gap-4 overflow-auto">
             <PDVCartSummary items={state.items} descontoGeral={descontoGeral} total={total} />
 
-            {state.mode === 'payment' && (
+            {state.mode === 'payment' && !budgetMode && (
               <PDVPaymentPanel
                 ref={paymentInputRef}
                 paymentForm={paymentForm}
@@ -388,7 +431,7 @@ export default function PDV() {
               />
             )}
 
-            {state.mode !== 'payment' && state.items.length > 0 && (
+            {state.mode !== 'payment' && state.items.length > 0 && !budgetMode && (
               <Button
                 onClick={() => {
                   dispatch({ type: 'SET_MODE', mode: 'payment' });
@@ -399,6 +442,17 @@ export default function PDV() {
                 <Banknote className="w-6 h-6" />
                 Finalizar Venda
                 <kbd className="ml-2 px-2 py-0.5 rounded bg-primary-foreground/20 text-sm font-mono">F4</kbd>
+              </Button>
+            )}
+
+            {budgetMode && state.items.length > 0 && (
+              <Button
+                onClick={handleSaveBudget}
+                disabled={salvarOrcamento.isPending}
+                className="h-16 bg-accent text-accent-foreground font-bold text-xl gap-3 hover:bg-accent/90"
+              >
+                <FileText className="w-6 h-6" />
+                {salvarOrcamento.isPending ? 'Salvando...' : 'Salvar Orçamento'}
               </Button>
             )}
           </div>
@@ -454,6 +508,7 @@ export default function PDV() {
           subtotal={lastSale.subtotal}
           desconto={lastSale.desconto}
           total={lastSale.total}
+          isBudget={lastSale.isBudget}
         />
       )}
     </div>
