@@ -73,3 +73,67 @@ export function useFinalizarVenda() {
     },
   });
 }
+
+// ── Orçamento (budget) ────────────────────────────────────────
+interface SalvarOrcamentoParams {
+  items: PDVItem[];
+  descontoGeral: number;
+  customer?: PDVCustomer | null;
+  subtotal: number;
+  total: number;
+  observacao?: string;
+}
+
+export function useSalvarOrcamento() {
+  const queryClient = useQueryClient();
+  const { profile, user } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ items, descontoGeral, customer, subtotal, total, observacao }: SalvarOrcamentoParams) => {
+      if (!profile?.empresa_id || !user?.id) throw new Error('Usuário não autenticado');
+
+      // Insert orcamento header
+      const { data: orcamento, error: orcError } = await supabase
+        .from('orcamentos')
+        .insert({
+          empresa_id: profile.empresa_id,
+          usuario_id: user.id,
+          cliente_id: customer?.id || null,
+          subtotal,
+          desconto: descontoGeral,
+          total,
+          observacao: observacao || null,
+        })
+        .select('id')
+        .single();
+
+      if (orcError) throw orcError;
+
+      // Insert items
+      const itensInsert = items.map(item => ({
+        orcamento_id: orcamento.id,
+        produto_id: item.produto.id,
+        nome_snapshot: item.produto.nome,
+        qtd: item.qtd,
+        preco_unit: item.preco_unit,
+        desconto: item.desconto,
+        subtotal: item.subtotal,
+      }));
+
+      const { error: itensError } = await supabase
+        .from('orcamento_itens')
+        .insert(itensInsert);
+
+      if (itensError) throw itensError;
+
+      return orcamento.id;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orcamentos'] });
+      toast.success('Orçamento salvo com sucesso!');
+    },
+    onError: (error: Error) => {
+      toast.error('Erro ao salvar orçamento: ' + error.message);
+    },
+  });
+}

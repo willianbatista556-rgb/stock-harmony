@@ -16,10 +16,11 @@ interface ReceiptModalProps {
   subtotal: number;
   desconto: number;
   total: number;
+  isBudget?: boolean;
 }
 
 export const ReceiptModal = memo(function ReceiptModal({
-  open, onOpenChange, items, pagamentos, customer, subtotal, desconto, total,
+  open, onOpenChange, items, pagamentos, customer, subtotal, desconto, total, isBudget,
 }: ReceiptModalProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +62,7 @@ export const ReceiptModal = memo(function ReceiptModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card max-w-sm">
         <DialogHeader>
-          <DialogTitle className="font-display">Comprovante de Venda</DialogTitle>
+          <DialogTitle className="font-display">{isBudget ? 'Orçamento' : 'Comprovante de Venda'}</DialogTitle>
         </DialogHeader>
 
         <div
@@ -69,7 +70,7 @@ export const ReceiptModal = memo(function ReceiptModal({
           className="bg-background rounded-lg border border-border p-4 font-mono text-xs space-y-2 max-h-[400px] overflow-auto"
         >
           <div className="text-center">
-            <p className="font-bold text-sm">COMPROVANTE DE VENDA</p>
+            <p className="font-bold text-sm">{isBudget ? 'ORÇAMENTO' : 'COMPROVANTE DE VENDA'}</p>
             <p className="text-muted-foreground">{dateStr} {timeStr}</p>
           </div>
 
@@ -123,22 +124,30 @@ export const ReceiptModal = memo(function ReceiptModal({
             </div>
           </div>
 
-          <div className="border-t border-dashed border-border" />
-
-          <div className="space-y-1">
-            <p className="text-muted-foreground">Pagamentos:</p>
-            {pagamentos.map((p, i) => (
-              <div key={i} className="flex justify-between">
-                <span>{formaLabel[p.forma] || p.forma}</span>
-                <span>
-                  {formatCurrency(p.valor)}
-                  {p.troco && p.troco > 0 ? ` (troco: ${formatCurrency(p.troco)})` : ''}
-                </span>
+          {pagamentos.length > 0 && (
+            <>
+              <div className="border-t border-dashed border-border" />
+              <div className="space-y-1">
+                <p className="text-muted-foreground">Pagamentos:</p>
+                {pagamentos.map((p, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span>{formaLabel[p.forma] || p.forma}</span>
+                    <span>
+                      {formatCurrency(p.valor)}
+                      {p.troco && p.troco > 0 ? ` (troco: ${formatCurrency(p.troco)})` : ''}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
 
           <div className="border-t border-dashed border-border" />
+          {isBudget && (
+            <p className="text-center text-muted-foreground text-[10px]">
+              Este documento é apenas um orçamento e não possui valor fiscal.
+            </p>
+          )}
           <p className="text-center text-muted-foreground">Obrigado pela preferência!</p>
         </div>
 
