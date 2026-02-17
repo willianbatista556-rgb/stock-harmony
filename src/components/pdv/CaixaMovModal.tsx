@@ -1,8 +1,7 @@
-import { memo, useState, useEffect, useRef } from 'react';
+import { memo, useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -22,37 +21,37 @@ export const CaixaMovModal = memo(function CaixaMovModal({
 }: CaixaMovModalProps) {
   const [tipo, setTipo] = useState<CashMoveOrigin>('sangria');
   const [valor, setValor] = useState('');
-  const [descricao, setDescricao] = useState('');
+  const [obs, setObs] = useState('');
   const [loading, setLoading] = useState(false);
   const valorRef = useRef<HTMLInputElement>(null);
+
+  const parsed = useMemo(() => Number(valor.replace(',', '.')) || 0, [valor]);
+  const isSangria = tipo === 'sangria';
 
   useEffect(() => {
     if (open) {
       setTipo('sangria');
       setValor('');
-      setDescricao('');
-      setTimeout(() => valorRef.current?.focus(), 100);
+      setObs('');
+      requestAnimationFrame(() => valorRef.current?.focus());
     }
   }, [open]);
 
-  const handleSubmit = async () => {
-    const val = parseFloat(valor);
-    if (isNaN(val) || val <= 0) {
-      toast.error('Informe um valor válido');
-      return;
-    }
+  const handleConfirm = async () => {
+    const v = Math.max(0, parsed);
+    if (v <= 0) { toast.error('Informe um valor válido'); return; }
 
     setLoading(true);
     try {
       await criarMovimentacaoCaixa({
         caixaId,
         empresaId,
-        tipo: tipo === 'sangria' ? 'saida' : 'entrada',
+        tipo: isSangria ? 'saida' : 'entrada',
         origem: tipo,
-        valor: val,
-        descricao: descricao.trim() || undefined,
+        valor: isSangria ? -v : v,
+        descricao: obs.trim() || undefined,
       });
-      toast.success(tipo === 'sangria' ? 'Sangria registrada' : 'Suprimento registrado');
+      toast.success(isSangria ? 'Sangria registrada' : 'Suprimento registrado');
       onOpenChange(false);
     } catch (err: any) {
       toast.error(err.message || 'Erro ao registrar movimentação');
@@ -61,20 +60,32 @@ export const CaixaMovModal = memo(function CaixaMovModal({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !loading && parsed > 0) {
+      e.preventDefault();
+      handleConfirm();
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-card max-w-md">
+      <DialogContent className="bg-card max-w-md" onKeyDown={handleKeyDown}>
         <DialogHeader>
-          <DialogTitle className="font-display">Sangria / Suprimento</DialogTitle>
+          <DialogTitle className="font-display flex items-center justify-between">
+            <span>{isSangria ? 'Sangria (retirar do caixa)' : 'Suprimento (colocar no caixa)'}</span>
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px] font-bold border border-border/50">Enter</kbd> confirma · <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px] font-bold border border-border/50">Esc</kbd> fecha
+          </p>
         </DialogHeader>
 
         {/* Type selector */}
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => setTipo('sangria')}
+            onClick={() => { setTipo('sangria'); valorRef.current?.focus(); }}
             className={cn(
               'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
-              tipo === 'sangria'
+              isSangria
                 ? 'border-destructive bg-destructive/8 text-destructive'
                 : 'border-border hover:border-muted-foreground/30 text-muted-foreground'
             )}
@@ -87,10 +98,10 @@ export const CaixaMovModal = memo(function CaixaMovModal({
           </button>
 
           <button
-            onClick={() => setTipo('suprimento')}
+            onClick={() => { setTipo('suprimento'); valorRef.current?.focus(); }}
             className={cn(
               'flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all',
-              tipo === 'suprimento'
+              !isSangria
                 ? 'border-primary bg-primary/8 text-primary'
                 : 'border-border hover:border-muted-foreground/30 text-muted-foreground'
             )}
@@ -108,26 +119,22 @@ export const CaixaMovModal = memo(function CaixaMovModal({
           <label className="text-sm font-medium text-foreground">Valor (R$)</label>
           <Input
             ref={valorRef}
-            type="number"
-            step="0.01"
-            min="0.01"
+            inputMode="decimal"
             placeholder="0,00"
             value={valor}
             onChange={e => setValor(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
             className="h-12 text-lg font-mono"
           />
         </div>
 
-        {/* Description */}
+        {/* Observation */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Motivo (opcional)</label>
-          <Textarea
-            placeholder="Ex: Troco para cliente, pagamento de fornecedor…"
-            value={descricao}
-            onChange={e => setDescricao(e.target.value)}
-            rows={2}
-            className="resize-none"
+          <label className="text-sm font-medium text-foreground">Observação (opcional)</label>
+          <input
+            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            value={obs}
+            onChange={e => setObs(e.target.value)}
+            placeholder="Ex.: troco para cliente, retirada para depósito…"
           />
         </div>
 
@@ -136,15 +143,15 @@ export const CaixaMovModal = memo(function CaixaMovModal({
             Cancelar
           </Button>
           <Button
-            onClick={handleSubmit}
-            disabled={loading}
+            onClick={handleConfirm}
+            disabled={loading || parsed <= 0}
             className={cn(
-              tipo === 'sangria'
+              isSangria
                 ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
                 : 'gradient-primary text-primary-foreground'
             )}
           >
-            {loading ? 'Registrando…' : tipo === 'sangria' ? 'Registrar Sangria' : 'Registrar Suprimento'}
+            {loading ? 'Registrando…' : isSangria ? 'Registrar Sangria' : 'Registrar Suprimento'}
           </Button>
         </DialogFooter>
       </DialogContent>
