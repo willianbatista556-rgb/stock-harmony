@@ -237,7 +237,13 @@ export default function PDV() {
     setLastSale(saleData);
     setShowReceipt(true);
     dispatch({ type: 'CLEAR_SALE' });
-  }, [state, depositoId, finalizarVenda, subtotalBruto, descontoGeral, total, caixaAberto]);
+    // Restore cliente balcão after clearing sale
+    if (profile?.empresa_id) {
+      ensureClienteBalcao(profile.empresa_id).then((balcId) => {
+        dispatch({ type: 'SET_CUSTOMER', customer: { id: balcId, nome: 'CLIENTE BALCAO' } });
+      }).catch(() => {});
+    }
+  }, [state, depositoId, finalizarVenda, subtotalBruto, descontoGeral, total, caixaAberto, profile?.empresa_id]);
 
   const handleSaveBudget = useCallback(async () => {
     if (state.items.length === 0) { toast.error('Adicione itens ao orçamento'); return; }
@@ -263,7 +269,13 @@ export default function PDV() {
     setLastSale(saleData);
     setShowReceipt(true);
     dispatch({ type: 'CLEAR_SALE' });
-  }, [state, salvarOrcamento, subtotalBruto, descontoGeral, total]);
+    // Restore cliente balcão after clearing sale
+    if (profile?.empresa_id) {
+      ensureClienteBalcao(profile.empresa_id).then((balcId) => {
+        dispatch({ type: 'SET_CUSTOMER', customer: { id: balcId, nome: 'CLIENTE BALCAO' } });
+      }).catch(() => {});
+    }
+  }, [state, salvarOrcamento, subtotalBruto, descontoGeral, total, profile?.empresa_id]);
 
   const handleInlineConfirm = useCallback(() => {
     const val = parseFloat(inputValue);
@@ -615,7 +627,15 @@ export default function PDV() {
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowConfirmCancel(false)}>Voltar</Button>
-            <Button variant="destructive" onClick={() => { dispatch({ type: 'CLEAR_SALE' }); setShowConfirmCancel(false); }}>
+            <Button variant="destructive" onClick={() => {
+              dispatch({ type: 'CLEAR_SALE' });
+              setShowConfirmCancel(false);
+              if (profile?.empresa_id) {
+                ensureClienteBalcao(profile.empresa_id).then((balcId) => {
+                  dispatch({ type: 'SET_CUSTOMER', customer: { id: balcId, nome: 'CLIENTE BALCAO' } });
+                }).catch(() => {});
+              }
+            }}>
               Cancelar Venda
             </Button>
           </DialogFooter>
