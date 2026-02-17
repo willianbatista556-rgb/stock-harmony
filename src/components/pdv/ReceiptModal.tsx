@@ -1,11 +1,13 @@
-import { memo, useRef } from 'react';
-import { Printer, X } from 'lucide-react';
+import { memo, useRef, useState } from 'react';
+import { Printer, X, Usb, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/formatters';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { PDVItem, Pagamento, PDVCustomer } from '@/lib/pdv/pdv.types';
+import { printReceipt, isWebSerialSupported, isPrinterConnected } from '@/lib/print';
+import { toast } from 'sonner';
 
 interface ReceiptModalProps {
   open: boolean;
@@ -17,14 +19,19 @@ interface ReceiptModalProps {
   desconto: number;
   total: number;
   isBudget?: boolean;
+  empresaNome?: string;
+  terminalNome?: string;
+  operador?: string;
 }
 
 export const ReceiptModal = memo(function ReceiptModal({
   open, onOpenChange, items, pagamentos, customer, subtotal, desconto, total, isBudget,
+  empresaNome, terminalNome, operador,
 }: ReceiptModalProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const [escPosPrinting, setEscPosPrinting] = useState(false);
 
-  const handlePrint = () => {
+  const handleBrowserPrint = () => {
     const content = receiptRef.current;
     if (!content) return;
     const win = window.open('', '_blank', 'width=320,height=600');
@@ -45,6 +52,23 @@ export const ReceiptModal = memo(function ReceiptModal({
       </body></html>
     `);
     win.document.close();
+  };
+
+  const handleEscPosPrint = async () => {
+    setEscPosPrinting(true);
+    try {
+      await printReceipt({
+        items, pagamentos, customer, subtotal, desconto, total, isBudget,
+        empresaNome, terminalNome, operador,
+        openDrawer: !isBudget,
+      });
+      toast.success('Cupom impresso com sucesso!');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erro desconhecido';
+      toast.error('Falha na impressão ESC/POS', { description: msg });
+    } finally {
+      setEscPosPrinting(false);
+    }
   };
 
   const formaLabel: Record<string, string> = {
@@ -151,13 +175,27 @@ export const ReceiptModal = memo(function ReceiptModal({
           <p className="text-center text-muted-foreground">Obrigado pela preferência!</p>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 flex-wrap">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             <X className="w-4 h-4 mr-1" /> Fechar
           </Button>
-          <Button onClick={handlePrint} className="gap-1.5">
-            <Printer className="w-4 h-4" /> Imprimir
+          <Button variant="outline" onClick={handleBrowserPrint} className="gap-1.5">
+            <Printer className="w-4 h-4" /> Imprimir (navegador)
           </Button>
+          {isWebSerialSupported() && (
+            <Button
+              onClick={handleEscPosPrint}
+              disabled={escPosPrinting}
+              className="gap-1.5"
+            >
+              {isPrinterConnected() ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <Usb className="w-4 h-4" />
+              )}
+              {escPosPrinting ? 'Imprimindo...' : 'Impressora Térmica'}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

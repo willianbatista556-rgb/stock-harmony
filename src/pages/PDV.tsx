@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useReducer, useCallback, useMemo } from 'react';
-import { ShoppingCart, Banknote, AlertTriangle, LogOut, User, FileText, Landmark, ArrowDownUp } from 'lucide-react';
+import { ShoppingCart, Banknote, AlertTriangle, LogOut, User, FileText, Landmark, ArrowDownUp, Printer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -505,6 +505,18 @@ export default function PDV() {
             {terminal?.nome || 'Terminal'}
           </Badge>
 
+          {lastSale && !showReceipt && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowReceipt(true)}
+              className="text-muted-foreground hover:text-foreground gap-1.5"
+            >
+              <Printer className="w-4 h-4" />
+              Última venda
+            </Button>
+          )}
+
           <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-muted-foreground hover:text-foreground gap-1.5">
             <LogOut className="w-4 h-4" />
             Sair
@@ -670,6 +682,9 @@ export default function PDV() {
           desconto={lastSale.desconto}
           total={lastSale.total}
           isBudget={lastSale.isBudget}
+          empresaNome={profile?.nome || undefined}
+          terminalNome={terminal?.nome || undefined}
+          operador={profile?.nome || profile?.email || undefined}
         />
       )}
 
