@@ -1,33 +1,30 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export type CaixaMovTipo = 'sangria' | 'suprimento';
+export type CashMoveType = 'entrada' | 'saida';
+export type CashMoveOrigin = 'suprimento' | 'sangria';
 
-export interface CaixaMovPayload {
-  caixaId: string;
+export async function criarMovimentacaoCaixa(params: {
   empresaId: string;
-  usuarioId: string;
-  tipo: CaixaMovTipo;
+  caixaId: string;
+  tipo: CashMoveType;
+  origem: CashMoveOrigin;
   valor: number;
   descricao?: string;
-}
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) throw new Error('Usuário não autenticado.');
 
-export async function registrarCaixaMov(payload: CaixaMovPayload) {
-  const { caixaId, empresaId, usuarioId, tipo, valor, descricao } = payload;
-
-  const { data, error } = await supabase
-    .from('caixa_movimentacoes')
-    .insert({
-      caixa_id: caixaId,
-      empresa_id: empresaId,
-      usuario_id: usuarioId,
-      tipo,
-      origem: tipo, // sangria or suprimento
-      valor: tipo === 'sangria' ? -Math.abs(valor) : Math.abs(valor),
-      descricao: descricao || (tipo === 'sangria' ? 'Sangria' : 'Suprimento'),
-    })
-    .select('id')
-    .single();
+  const { error } = await supabase.from('caixa_movimentacoes').insert({
+    empresa_id: params.empresaId,
+    caixa_id: params.caixaId,
+    origem: params.origem,
+    ref_id: null,
+    tipo: params.tipo,
+    valor: params.valor,
+    descricao: params.descricao ?? null,
+    usuario_id: userId,
+  });
 
   if (error) throw new Error(error.message);
-  return data.id;
 }

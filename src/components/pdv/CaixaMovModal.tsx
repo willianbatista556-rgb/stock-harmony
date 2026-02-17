@@ -8,20 +8,19 @@ import { toast } from 'sonner';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { registrarCaixaMov, CaixaMovTipo } from '@/lib/pdv/pdv.caixa.api';
+import { criarMovimentacaoCaixa, CashMoveOrigin } from '@/lib/pdv/pdv.caixa.api';
 
 interface CaixaMovModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   caixaId: string;
   empresaId: string;
-  usuarioId: string;
 }
 
 export const CaixaMovModal = memo(function CaixaMovModal({
-  open, onOpenChange, caixaId, empresaId, usuarioId,
+  open, onOpenChange, caixaId, empresaId,
 }: CaixaMovModalProps) {
-  const [tipo, setTipo] = useState<CaixaMovTipo>('sangria');
+  const [tipo, setTipo] = useState<CashMoveOrigin>('sangria');
   const [valor, setValor] = useState('');
   const [descricao, setDescricao] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,11 +44,11 @@ export const CaixaMovModal = memo(function CaixaMovModal({
 
     setLoading(true);
     try {
-      await registrarCaixaMov({
+      await criarMovimentacaoCaixa({
         caixaId,
         empresaId,
-        usuarioId,
-        tipo,
+        tipo: tipo === 'sangria' ? 'saida' : 'entrada',
+        origem: tipo,
         valor: val,
         descricao: descricao.trim() || undefined,
       });
