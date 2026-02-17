@@ -18,6 +18,7 @@ import Categorias from "./pages/Categorias";
 import Fornecedores from "./pages/Fornecedores";
 import Placeholder from "./pages/Placeholder";
 import FecharCaixa from "./pages/FecharCaixa";
+import Configuracoes from "./pages/Configuracoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -116,10 +117,7 @@ const App = () => (
               path="/configuracoes"
               element={
                 <AppLayout>
-                  <Placeholder
-                    title="Configurações"
-                    description="Personalize as configurações da sua empresa e do sistema."
-                  />
+                  <Configuracoes />
                 </AppLayout>
               }
             />
