@@ -23,9 +23,10 @@ import {
   ResponsiveContainer, Legend, LineChart, Line,
 } from 'recharts';
 import { formatCurrency, formatDate, formatTime } from '@/lib/formatters';
+import { useTerminais } from '@/hooks/useTerminais';
 import { useDepositos } from '@/hooks/useDepositos';
 import {
-  useCaixaAberto, useCaixasAbertos, useCaixasHistorico, useCaixaMovimentacoes,
+  useCaixaAbertoPorTerminal, useCaixasAbertos, useCaixasHistorico, useCaixaMovimentacoes,
   useFluxoCaixa, useAbrirCaixa, useFecharCaixa, useSangria, useSuprimento,
   CaixaMovimentacao,
 } from '@/hooks/useCaixa';
@@ -44,20 +45,23 @@ export default function Caixa() {
   const { data: caixasAbertos = [] } = useCaixasAbertos();
   const { data: historico = [] } = useCaixasHistorico();
   const { data: fluxoDiario = [] } = useFluxoCaixa();
+  const { data: terminais = [] } = useTerminais();
   const { data: depositos = [] } = useDepositos();
 
-  // Selected deposit for viewing/managing
-  const [selectedDepositoId, setSelectedDepositoId] = useState('');
+  // Selected terminal for viewing/managing
+  const [selectedTerminalId, setSelectedTerminalId] = useState('');
 
-  // Auto-select first deposit with open caixa, or first deposit
+  // Auto-select first terminal with open caixa, or first terminal
   useEffect(() => {
-    if (!selectedDepositoId && depositos.length > 0) {
-      const openDep = caixasAbertos.find(c => c.status === 'aberto');
-      setSelectedDepositoId(openDep?.deposito_id || depositos[0].id);
+    if (!selectedTerminalId && terminais.length > 0) {
+      const openCaixa = caixasAbertos.find(c => c.terminal_id);
+      const matchedTerminal = openCaixa ? terminais.find(t => t.id === openCaixa.terminal_id) : null;
+      setSelectedTerminalId(matchedTerminal?.id || terminais[0].id);
     }
-  }, [depositos, caixasAbertos, selectedDepositoId]);
+  }, [terminais, caixasAbertos, selectedTerminalId]);
 
-  const caixaAberto = caixasAbertos.find(c => c.deposito_id === selectedDepositoId) || null;
+  const selectedTerminal = terminais.find(t => t.id === selectedTerminalId);
+  const caixaAberto = caixasAbertos.find(c => c.terminal_id === selectedTerminalId) || null;
   const { data: movimentacoes = [] } = useCaixaMovimentacoes(caixaAberto?.id);
 
   const abrirCaixa = useAbrirCaixa();
@@ -70,7 +74,6 @@ export default function Caixa() {
   const [showSangria, setShowSangria] = useState(false);
   const [showSuprimento, setShowSuprimento] = useState(false);
 
-  const [depositoId, setDepositoId] = useState('');
   const [valorAbertura, setValorAbertura] = useState('');
   const [valorFechamento, setValorFechamento] = useState('');
   const [observacaoFechamento, setObservacaoFechamento] = useState('');
@@ -121,12 +124,15 @@ export default function Caixa() {
   );
 
   const handleAbrir = async () => {
-    if (!depositoId) { toast.error('Selecione um depósito'); return; }
+    if (!selectedTerminal) { toast.error('Selecione um terminal'); return; }
     const val = parseFloat(valorAbertura) || 0;
-    await abrirCaixa.mutateAsync({ depositoId, valorAbertura: val });
+    await abrirCaixa.mutateAsync({
+      depositoId: selectedTerminal.deposito_id,
+      terminalId: selectedTerminal.id,
+      valorAbertura: val,
+    });
     setShowAbrir(false);
     setValorAbertura('');
-    setDepositoId('');
   };
 
   const handleFechar = async () => {
@@ -163,6 +169,7 @@ export default function Caixa() {
   };
 
   const diferenca = caixaAberto ? saldoAtual - (caixaAberto.valor_abertura || 0) : 0;
+  const depositoNome = selectedTerminal ? depositos.find(d => d.id === selectedTerminal.deposito_id)?.nome : null;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -174,23 +181,23 @@ export default function Caixa() {
           </div>
           <div>
             <h1 className="text-2xl font-display font-bold text-foreground">Caixa</h1>
-            <p className="text-sm text-muted-foreground">Controle de caixa por terminal (depósito)</p>
+            <p className="text-sm text-muted-foreground">Controle de caixa por terminal</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Terminal/Deposit selector */}
-          <Select value={selectedDepositoId} onValueChange={setSelectedDepositoId}>
+          {/* Terminal selector */}
+          <Select value={selectedTerminalId} onValueChange={setSelectedTerminalId}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Selecione o terminal" />
             </SelectTrigger>
             <SelectContent>
-              {depositos.map(d => {
-                const isOpen = caixasAbertos.some(c => c.deposito_id === d.id);
+              {terminais.map(t => {
+                const isOpen = caixasAbertos.some(c => c.terminal_id === t.id);
                 return (
-                  <SelectItem key={d.id} value={d.id}>
+                  <SelectItem key={t.id} value={t.id}>
                     <span className="flex items-center gap-2">
-                      {d.nome}
+                      {t.nome}
                       {isOpen && <span className="w-2 h-2 rounded-full bg-success inline-block" />}
                     </span>
                   </SelectItem>
@@ -199,11 +206,11 @@ export default function Caixa() {
             </SelectContent>
           </Select>
 
-          {!caixaAberto ? (
-            <Button onClick={() => { setDepositoId(selectedDepositoId); setShowAbrir(true); }} className="gradient-primary text-primary-foreground gap-2">
+          {!caixaAberto && selectedTerminal ? (
+            <Button onClick={() => { setShowAbrir(true); }} className="gradient-primary text-primary-foreground gap-2">
               <DoorOpen className="w-4 h-4" /> Abrir Caixa
             </Button>
-          ) : (
+          ) : caixaAberto ? (
             <>
               <Badge className="bg-success/10 text-success border-success/20 px-3 py-1.5 font-mono">
                 <Clock className="w-3 h-3 mr-1.5" />
@@ -219,7 +226,7 @@ export default function Caixa() {
                 <DoorClosed className="w-4 h-4" /> Fechar Caixa
               </Button>
             </>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -255,7 +262,7 @@ export default function Caixa() {
         </div>
       )}
 
-      {/* Tabs: Current register / Flow / History */}
+      {/* Tabs */}
       <Tabs defaultValue={caixaAberto ? 'atual' : 'fluxo'} className="space-y-4">
         <TabsList>
           {caixaAberto && <TabsTrigger value="atual">Caixa Atual</TabsTrigger>}
@@ -263,7 +270,6 @@ export default function Caixa() {
           <TabsTrigger value="historico">Histórico</TabsTrigger>
         </TabsList>
 
-        {/* Current register movements */}
         {caixaAberto && (
           <TabsContent value="atual">
             <Card className="bg-card shadow-card">
@@ -304,7 +310,6 @@ export default function Caixa() {
           </TabsContent>
         )}
 
-        {/* Cash flow charts */}
         <TabsContent value="fluxo" className="space-y-4">
           <Tabs defaultValue="diario">
             <TabsList>
@@ -385,7 +390,6 @@ export default function Caixa() {
           </Tabs>
         </TabsContent>
 
-        {/* History */}
         <TabsContent value="historico">
           <Card className="bg-card shadow-card">
             <CardHeader><CardTitle className="text-base">Histórico de Caixas</CardTitle></CardHeader>
@@ -442,17 +446,11 @@ export default function Caixa() {
       {/* Dialog: Abrir Caixa */}
       <Dialog open={showAbrir} onOpenChange={setShowAbrir}>
         <DialogContent className="bg-card max-w-sm">
-          <DialogHeader><DialogTitle>Abrir Caixa</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Abrir Caixa — {selectedTerminal?.nome}</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Depósito</label>
-              <Select value={depositoId} onValueChange={setDepositoId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {depositos.map(d => <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {depositoNome && (
+              <p className="text-sm text-muted-foreground">Depósito: <strong>{depositoNome}</strong></p>
+            )}
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Valor de abertura (R$)</label>
               <Input type="number" min="0" step="0.01" value={valorAbertura} onChange={e => setValorAbertura(e.target.value)} placeholder="0,00" />
