@@ -21,6 +21,7 @@ import FecharCaixa from "./pages/FecharCaixa";
 import Configuracoes from "./pages/Configuracoes";
 import Inventario from "./pages/Inventario";
 import InventarioContagem from "./pages/InventarioContagem";
+import InventarioCompleto from "./pages/InventarioCompleto";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -128,6 +129,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <InventarioContagem />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/inventario/:id/completo"
+              element={
+                <AppLayout>
+                  <InventarioCompleto />
                 </AppLayout>
               }
             />

@@ -229,6 +229,29 @@ export function useAplicarAjustesInventario() {
   });
 }
 
+export interface InventarioSnapshotItem {
+  id: string;
+  inventario_id: string;
+  produto_id: string;
+  qtd_esperada: number;
+}
+
+export function useInventarioSnapshot(inventarioId: string | undefined) {
+  return useQuery({
+    queryKey: ['inventario-snapshot', inventarioId],
+    queryFn: async () => {
+      if (!inventarioId) return [];
+      const { data, error } = await supabase
+        .from('inventario_snapshot')
+        .select('*')
+        .eq('inventario_id', inventarioId);
+      if (error) throw error;
+      return data as InventarioSnapshotItem[];
+    },
+    enabled: !!inventarioId,
+  });
+}
+
 export function useCancelarInventario() {
   const queryClient = useQueryClient();
   return useMutation({

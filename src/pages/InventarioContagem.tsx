@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   ClipboardList, Search, Trash2, CheckCircle2, ArrowLeft,
   AlertTriangle, ArrowDownCircle, ArrowUpCircle, Equal, XCircle,
-  Loader2, Play, RefreshCw, FileText, Package, Hash,
+  Loader2, Play, RefreshCw, FileText, Package, Hash, List,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -284,6 +284,11 @@ export default function InventarioContagem() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {!isRascunho && status !== 'cancelado' && (
+            <Button variant="outline" size="sm" onClick={() => navigate(`/inventario/${inventarioId}/completo`)} className="gap-1.5">
+              <List className="w-4 h-4" /> Modo Completo
+            </Button>
+          )}
           {isRascunho && (
             <>
               <Button variant="outline" size="sm" onClick={handleCancelar} className="text-destructive border-destructive/30">
