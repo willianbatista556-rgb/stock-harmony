@@ -1,17 +1,75 @@
-import { Settings, ShieldCheck, PackageMinus, AlertTriangle, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, ShieldCheck, PackageMinus, AlertTriangle, Loader2, Building2, Save } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmpresaConfig, useUpdateEmpresaConfig } from '@/hooks/useEmpresaConfig';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export default function Configuracoes() {
-  const { userRole } = useAuth();
+  const { userRole, profile } = useAuth();
   const { data: config, isLoading } = useEmpresaConfig();
   const updateConfig = useUpdateEmpresaConfig();
+  const queryClient = useQueryClient();
+
+  // Empresa data
+  const { data: empresa, isLoading: isLoadingEmpresa } = useQuery({
+    queryKey: ['empresa', profile?.empresa_id],
+    queryFn: async () => {
+      if (!profile?.empresa_id) return null;
+      const { data, error } = await supabase
+        .from('empresas')
+        .select('id, nome, cnpj, ramo')
+        .eq('id', profile.empresa_id)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!profile?.empresa_id,
+  });
+
+  const [empresaForm, setEmpresaForm] = useState({ nome: '', cnpj: '', ramo: '' });
+  const [empresaDirty, setEmpresaDirty] = useState(false);
+
+  useEffect(() => {
+    if (empresa) {
+      setEmpresaForm({
+        nome: empresa.nome || '',
+        cnpj: empresa.cnpj || '',
+        ramo: empresa.ramo || '',
+      });
+      setEmpresaDirty(false);
+    }
+  }, [empresa]);
+
+  const updateEmpresa = useMutation({
+    mutationFn: async (values: { nome: string; cnpj: string; ramo: string }) => {
+      if (!profile?.empresa_id) throw new Error('Empresa não encontrada');
+      const { error } = await supabase
+        .from('empresas')
+        .update({ nome: values.nome, cnpj: values.cnpj || null, ramo: values.ramo || null })
+        .eq('id', profile.empresa_id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Dados da empresa salvos');
+      queryClient.invalidateQueries({ queryKey: ['empresa'] });
+      setEmpresaDirty(false);
+    },
+    onError: (err: Error) => toast.error(`Erro ao salvar: ${err.message}`),
+  });
+
+  const handleEmpresaChange = (field: string, value: string) => {
+    setEmpresaForm((prev) => ({ ...prev, [field]: value }));
+    setEmpresaDirty(true);
+  };
 
   const isAdmin = userRole?.role === 'Admin';
 
@@ -47,9 +105,74 @@ export default function Configuracoes() {
     return (
       <div className="flex-1 flex items-center justify-center p-8">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+      {/* Empresa data card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-primary" />
+            <CardTitle className="text-lg">Dados da Empresa</CardTitle>
+          </div>
+          <CardDescription>
+            Informações cadastrais da empresa.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoadingEmpresa ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="emp-nome" className="text-sm font-semibold">Nome da Empresa</Label>
+                <Input
+                  id="emp-nome"
+                  value={empresaForm.nome}
+                  onChange={(e) => handleEmpresaChange('nome', e.target.value)}
+                  placeholder="Nome da empresa"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="emp-cnpj" className="text-sm font-semibold">CNPJ</Label>
+                  <Input
+                    id="emp-cnpj"
+                    value={empresaForm.cnpj}
+                    onChange={(e) => handleEmpresaChange('cnpj', e.target.value)}
+                    placeholder="00.000.000/0000-00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emp-ramo" className="text-sm font-semibold">Ramo de Atividade</Label>
+                  <Input
+                    id="emp-ramo"
+                    value={empresaForm.ramo}
+                    onChange={(e) => handleEmpresaChange('ramo', e.target.value)}
+                    placeholder="Ex: Varejo, Alimentação..."
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={() => updateEmpresa.mutate(empresaForm)}
+                  disabled={!empresaDirty || !empresaForm.nome.trim() || updateEmpresa.isPending}
+                  size="sm"
+                >
+                  {updateEmpresa.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Salvar
+                </Button>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
   return (
     <div className="flex-1 p-6 md:p-8 space-y-8 max-w-3xl">
