@@ -109,11 +109,7 @@ export default function PDV() {
   const [paymentForm, setPaymentForm] = useState<Pagamento['forma']>('dinheiro');
   const [paymentValue, setPaymentValue] = useState('');
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
-  const [showHelp, setShowHelp] = useState(false);
-  const [showCustomer, setShowCustomer] = useState(false);
-  const [showDiscount, setShowDiscount] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [caixaMovMode, setCaixaMovMode] = useState<'sangria' | 'suprimento' | null>(null);
   const [lastSale, setLastSale] = useState<{
     items: typeof state.items;
     pagamentos: Pagamento[];
@@ -246,7 +242,7 @@ export default function PDV() {
 
   // ── Hotkey handlers ─────────────────────────────────────
   const hotkeyHandlers = useMemo(() => ({
-    onHelp: () => setShowHelp(prev => !prev),
+    onHelp: () => dispatch({ type: 'SET_MODAL', modal: state.modal === 'hotkeys' ? null : 'hotkeys' }),
     onFocusSearch: () => {
       dispatch({ type: 'SET_MODE', mode: 'search' });
       setSearchQuery('');
@@ -261,7 +257,7 @@ export default function PDV() {
     },
     onDiscount: () => {
       if (state.items.length > 0) {
-        setShowDiscount(true);
+        dispatch({ type: 'SET_MODAL', modal: 'discount' });
       }
     },
     onQuantity: () => {
@@ -271,15 +267,12 @@ export default function PDV() {
         setInputValue(String(state.items[Math.max(0, state.selectedIndex)]?.qtd || 1));
       }
     },
-    onCustomer: () => setShowCustomer(true),
-    onSuprimento: () => { if (caixaAberto && !budgetMode) setCaixaMovMode('suprimento'); },
-    onSangria: () => { if (caixaAberto && !budgetMode) setCaixaMovMode('sangria'); },
+    onCustomer: () => dispatch({ type: 'SET_MODAL', modal: 'customer' }),
+    onSuprimento: () => { if (caixaAberto && !budgetMode) dispatch({ type: 'SET_MODAL', modal: 'suprimento' }); },
+    onSangria: () => { if (caixaAberto && !budgetMode) dispatch({ type: 'SET_MODAL', modal: 'sangria' }); },
     onCancel: () => {
-      if (showCustomer || showDiscount || showHelp || caixaMovMode) {
-        setShowCustomer(false);
-        setShowDiscount(false);
-        setShowHelp(false);
-        setCaixaMovMode(null);
+      if (state.modal) {
+        dispatch({ type: 'SET_MODAL', modal: null });
       } else if (state.mode === 'payment') {
         dispatch({ type: 'SET_MODE', mode: 'normal' });
         setPaymentValue('');
@@ -313,7 +306,7 @@ export default function PDV() {
         setTimeout(() => searchInputRef.current?.focus(), 50);
       }
     },
-  }), [state, restante, searchResults, searchSelectedIndex, showCustomer, showDiscount, showHelp]);
+  }), [state, restante, searchResults, searchSelectedIndex, caixaAberto, budgetMode]);
 
   usePdvHotkeys(hotkeyHandlers);
 
@@ -438,7 +431,7 @@ export default function PDV() {
         <div className="flex items-center gap-3">
           {/* Customer indicator */}
           <button
-            onClick={() => setShowCustomer(true)}
+            onClick={() => dispatch({ type: 'SET_MODAL', modal: 'customer' })}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors border',
               state.customer
@@ -588,18 +581,18 @@ export default function PDV() {
         </DialogContent>
       </Dialog>
 
-      <HotkeysHelpModal open={showHelp} onOpenChange={setShowHelp} />
+      <HotkeysHelpModal open={state.modal === 'hotkeys'} onOpenChange={(open) => dispatch({ type: 'SET_MODAL', modal: open ? 'hotkeys' : null })} />
 
       <CustomerModal
-        open={showCustomer}
-        onOpenChange={setShowCustomer}
+        open={state.modal === 'customer'}
+        onOpenChange={(open) => dispatch({ type: 'SET_MODAL', modal: open ? 'customer' : null })}
         currentCustomer={state.customer}
         onSelect={(customer) => dispatch({ type: 'SET_CUSTOMER', customer })}
       />
 
       <DiscountModal
-        open={showDiscount}
-        onOpenChange={setShowDiscount}
+        open={state.modal === 'discount'}
+        onOpenChange={(open) => dispatch({ type: 'SET_MODAL', modal: open ? 'discount' : null })}
         currentDiscount={state.discount}
         subtotal={subtotalBruto}
         onApply={(discount) => dispatch({ type: 'SET_DISCOUNT', discount })}
@@ -621,11 +614,11 @@ export default function PDV() {
 
       {caixaAberto && user && profile?.empresa_id && (
         <CaixaMovModal
-          open={!!caixaMovMode}
-          onOpenChange={(open) => { if (!open) setCaixaMovMode(null); }}
+          open={state.modal === 'sangria' || state.modal === 'suprimento'}
+          onOpenChange={(open) => { if (!open) dispatch({ type: 'SET_MODAL', modal: null }); }}
           caixaId={caixaAberto.id}
           empresaId={profile.empresa_id}
-          defaultMode={caixaMovMode || 'sangria'}
+          defaultMode={(state.modal === 'sangria' || state.modal === 'suprimento') ? state.modal : 'sangria'}
         />
       )}
     </div>
