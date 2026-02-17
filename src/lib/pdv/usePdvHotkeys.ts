@@ -7,7 +7,8 @@ export interface HotkeyHandlers {
   onDiscount: () => void;
   onQuantity: () => void;
   onCustomer: () => void;
-  onCaixaMov: () => void;
+  onSuprimento: () => void;
+  onSangria: () => void;
   onCancel: () => void;
   onRemoveItem: () => void;
   onArrowUp: () => void;
@@ -56,13 +57,17 @@ export function usePdvHotkeys(h: HotkeyHandlers) {
           e.preventDefault();
           h.onFinalize();
           return;
-        case 'F5':
-          e.preventDefault();
-          h.onCaixaMov();
-          return;
         case 'F6':
           e.preventDefault();
           h.onQuantity();
+          return;
+        case 'F7':
+          e.preventDefault();
+          h.onSuprimento();
+          return;
+        case 'F8':
+          e.preventDefault();
+          h.onSangria();
           return;
       }
 
