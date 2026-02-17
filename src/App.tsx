@@ -19,6 +19,8 @@ import Fornecedores from "./pages/Fornecedores";
 import Placeholder from "./pages/Placeholder";
 import FecharCaixa from "./pages/FecharCaixa";
 import Configuracoes from "./pages/Configuracoes";
+import Inventario from "./pages/Inventario";
+import InventarioContagem from "./pages/InventarioContagem";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -110,6 +112,22 @@ const App = () => (
                     title="Usuários"
                     description="Gerencie os usuários do sistema e suas permissões de acesso."
                   />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/inventario"
+              element={
+                <AppLayout>
+                  <Inventario />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/inventario/:id"
+              element={
+                <AppLayout>
+                  <InventarioContagem />
                 </AppLayout>
               }
             />
