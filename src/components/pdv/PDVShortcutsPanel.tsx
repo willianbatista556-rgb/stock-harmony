@@ -9,6 +9,7 @@ const shortcuts = [
   { key: 'F6', label: 'Qtd' },
   { key: 'F7', label: 'Suprim.' },
   { key: 'F8', label: 'Sangria' },
+  { key: 'F9', label: 'Fechar' },
   { key: 'Ctrl+L', label: 'Busca' },
   { key: 'Del', label: 'Remover' },
   { key: 'Esc', label: 'Cancelar' },
