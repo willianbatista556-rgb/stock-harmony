@@ -578,6 +578,119 @@ export type Database = {
           },
         ]
       }
+      inventario_itens: {
+        Row: {
+          criado_em: string
+          diferenca: number | null
+          id: string
+          inventario_id: string
+          nome_snapshot: string | null
+          produto_id: string
+          qtd_contada: number
+          qtd_sistema: number | null
+        }
+        Insert: {
+          criado_em?: string
+          diferenca?: number | null
+          id?: string
+          inventario_id: string
+          nome_snapshot?: string | null
+          produto_id: string
+          qtd_contada?: number
+          qtd_sistema?: number | null
+        }
+        Update: {
+          criado_em?: string
+          diferenca?: number | null
+          id?: string
+          inventario_id?: string
+          nome_snapshot?: string | null
+          produto_id?: string
+          qtd_contada?: number
+          qtd_sistema?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_itens_inventario_id_fkey"
+            columns: ["inventario_id"]
+            isOneToOne: false
+            referencedRelation: "inventarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
+      inventarios: {
+        Row: {
+          aplicado_em: string | null
+          criado_em: string
+          deposito_id: string
+          empresa_id: string
+          finalizado_em: string | null
+          id: string
+          observacao: string | null
+          status: string
+          usuario_id: string
+        }
+        Insert: {
+          aplicado_em?: string | null
+          criado_em?: string
+          deposito_id: string
+          empresa_id: string
+          finalizado_em?: string | null
+          id?: string
+          observacao?: string | null
+          status?: string
+          usuario_id: string
+        }
+        Update: {
+          aplicado_em?: string | null
+          criado_em?: string
+          deposito_id?: string
+          empresa_id?: string
+          finalizado_em?: string | null
+          id?: string
+          observacao?: string | null
+          status?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventarios_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventarios_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "inventarios_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       logs: {
         Row: {
           acao: string | null
@@ -1335,6 +1448,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      inventario_aplicar_ajustes: {
+        Args: { p_inventario_id: string }
+        Returns: undefined
+      }
+      inventario_finalizar: {
+        Args: { p_inventario_id: string }
+        Returns: undefined
       }
       pdv_finalizar_venda: {
         Args: {

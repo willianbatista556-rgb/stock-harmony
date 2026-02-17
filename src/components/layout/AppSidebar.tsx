@@ -15,7 +15,8 @@ import {
   Building2,
   FolderTree,
   Monitor,
-  Landmark
+  Landmark,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,7 @@ const menuItems = [
   { icon: ArrowRightLeft, label: 'Movimentações', path: '/movimentacoes' },
   { icon: Truck, label: 'Fornecedores', path: '/fornecedores' },
   { icon: ShoppingCart, label: 'Compras', path: '/compras' },
+  { icon: ClipboardList, label: 'Inventário', path: '/inventario' },
 ];
 
 const bottomItems = [
