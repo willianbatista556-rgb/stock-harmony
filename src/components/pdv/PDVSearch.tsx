@@ -49,7 +49,9 @@ export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
                 onClick={() => onSelectProduct(produto)}
                 className={cn(
                   'w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors border-b border-border/20 last:border-0',
-                  i === selectedIndex ? 'bg-primary/8' : 'hover:bg-muted/40'
+                  (estoqueMap[produto.id] ?? 0) <= 0
+                    ? 'bg-destructive/10 hover:bg-destructive/15'
+                    : i === selectedIndex ? 'bg-primary/8' : 'hover:bg-muted/40'
                 )}
               >
                 <div>
