@@ -1,5 +1,5 @@
 import { memo, useState, useEffect, useRef, useCallback } from 'react';
-import { Search, UserPlus, X } from 'lucide-react';
+import { Search, X, User, ShoppingBag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -8,8 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { toast } from 'sonner';
 import { PDVCustomer } from '@/lib/pdv/pdv.types';
+
+const CLIENTE_BALCAO: PDVCustomer = { id: '', nome: 'Cliente Balcão' };
 
 interface CustomerModalProps {
   open: boolean;
@@ -26,9 +27,6 @@ export const CustomerModal = memo(function CustomerModal({
   const [results, setResults] = useState<PDVCustomer[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newCpf, setNewCpf] = useState('');
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -60,7 +58,7 @@ export const CustomerModal = memo(function CustomerModal({
   }, [query, search]);
 
   const handleSelect = (customer: PDVCustomer) => {
-    onSelect(customer);
+    onSelect(customer.id ? customer : null);
     onOpenChange(false);
   };
 
@@ -69,25 +67,13 @@ export const CustomerModal = memo(function CustomerModal({
     onOpenChange(false);
   };
 
-  const handleAdd = async () => {
-    if (!newName.trim() || !profile?.empresa_id) return;
-    const { data, error } = await supabase
-      .from('clientes')
-      .insert({ empresa_id: profile.empresa_id, nome: newName.trim(), cpf_cnpj: newCpf.trim() || null })
-      .select('id, nome, cpf_cnpj')
-      .single();
-    if (error) { toast.error('Erro ao cadastrar cliente'); return; }
-    handleSelect({ id: data.id, nome: data.nome, cpf_cnpj: data.cpf_cnpj || undefined });
-    setShowAdd(false);
-    setNewName('');
-    setNewCpf('');
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, results.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)); }
     else if (e.key === 'Enter' && results.length > 0) { e.preventDefault(); handleSelect(results[selectedIdx]); }
   };
+
+  const isBalcao = !currentCustomer;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,86 +82,90 @@ export const CustomerModal = memo(function CustomerModal({
           <DialogTitle className="font-display">Cliente</DialogTitle>
         </DialogHeader>
 
-        {currentCustomer && (
-          <div className="flex items-center justify-between bg-primary/8 rounded-lg px-4 py-3 border border-primary/20">
+        {/* Current customer indicator */}
+        <div className="flex items-center justify-between bg-muted/50 rounded-lg px-4 py-3 border border-border">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              'w-8 h-8 rounded-full flex items-center justify-center',
+              isBalcao ? 'bg-muted-foreground/10' : 'bg-primary/10'
+            )}>
+              {isBalcao
+                ? <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                : <User className="w-4 h-4 text-primary" />
+              }
+            </div>
             <div>
-              <p className="font-semibold text-foreground">{currentCustomer.nome}</p>
-              {currentCustomer.cpf_cnpj && (
+              <p className="font-semibold text-sm text-foreground">
+                {currentCustomer?.nome || 'Cliente Balcão'}
+              </p>
+              {currentCustomer?.cpf_cnpj && (
                 <p className="text-xs text-muted-foreground font-mono">{currentCustomer.cpf_cnpj}</p>
               )}
+              {isBalcao && (
+                <p className="text-xs text-muted-foreground">Venda sem identificação de cliente</p>
+              )}
             </div>
-            <Button variant="ghost" size="sm" onClick={handleRemove} className="text-destructive hover:text-destructive">
+          </div>
+          {!isBalcao && (
+            <Button variant="ghost" size="sm" onClick={handleRemove} className="text-destructive hover:text-destructive h-8 px-2">
               <X className="w-4 h-4 mr-1" /> Remover
             </Button>
+          )}
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            ref={searchRef}
+            placeholder="Buscar por nome ou CPF/CNPJ..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="pl-10 h-11"
+          />
+        </div>
+
+        {/* Results */}
+        {results.length > 0 && (
+          <div className="border border-border rounded-lg overflow-hidden max-h-[240px] overflow-auto">
+            {results.map((c, i) => (
+              <button
+                key={c.id}
+                onClick={() => handleSelect(c)}
+                className={cn(
+                  'w-full text-left px-4 py-3 border-b border-border/20 last:border-0 transition-colors',
+                  i === selectedIdx ? 'bg-primary/8' : 'hover:bg-muted/40'
+                )}
+              >
+                <p className="font-semibold text-foreground text-sm">{c.nome}</p>
+                {c.cpf_cnpj && <p className="text-xs text-muted-foreground font-mono">{c.cpf_cnpj}</p>}
+              </button>
+            ))}
           </div>
         )}
 
-        {!showAdd ? (
-          <>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                ref={searchRef}
-                placeholder="Buscar por nome ou CPF/CNPJ..."
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="pl-10 h-11"
-              />
-            </div>
-
-            {results.length > 0 && (
-              <div className="border border-border rounded-lg overflow-hidden max-h-[240px] overflow-auto">
-                {results.map((c, i) => (
-                  <button
-                    key={c.id}
-                    onClick={() => handleSelect(c)}
-                    className={cn(
-                      'w-full text-left px-4 py-3 border-b border-border/20 last:border-0 transition-colors',
-                      i === selectedIdx ? 'bg-primary/8' : 'hover:bg-muted/40'
-                    )}
-                  >
-                    <p className="font-semibold text-foreground text-sm">{c.nome}</p>
-                    {c.cpf_cnpj && <p className="text-xs text-muted-foreground font-mono">{c.cpf_cnpj}</p>}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {query && results.length === 0 && !loading && (
-              <p className="text-sm text-muted-foreground text-center py-4">Nenhum cliente encontrado</p>
-            )}
-
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
-              <Button onClick={() => setShowAdd(true)} className="gap-1.5">
-                <UserPlus className="w-4 h-4" /> Novo Cliente
-              </Button>
-            </DialogFooter>
-          </>
-        ) : (
-          <>
-            <div className="space-y-3">
-              <Input
-                placeholder="Nome do cliente *"
-                value={newName}
-                onChange={e => setNewName(e.target.value)}
-                autoFocus
-                onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-              />
-              <Input
-                placeholder="CPF/CNPJ (opcional)"
-                value={newCpf}
-                onChange={e => setNewCpf(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-              />
-            </div>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" onClick={() => setShowAdd(false)}>Voltar</Button>
-              <Button onClick={handleAdd} disabled={!newName.trim()}>Cadastrar e Selecionar</Button>
-            </DialogFooter>
-          </>
+        {query && results.length === 0 && !loading && (
+          <p className="text-sm text-muted-foreground text-center py-4">Nenhum cliente encontrado</p>
         )}
+
+        {/* Quick action: back to balcão */}
+        {!isBalcao && !query && (
+          <button
+            onClick={() => handleSelect(CLIENTE_BALCAO)}
+            className="w-full text-left px-4 py-3 rounded-lg border border-dashed border-border hover:bg-muted/40 transition-colors flex items-center gap-3"
+          >
+            <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Usar Cliente Balcão</p>
+              <p className="text-xs text-muted-foreground">Remover cliente e vender sem identificação</p>
+            </div>
+          </button>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Fechar</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
