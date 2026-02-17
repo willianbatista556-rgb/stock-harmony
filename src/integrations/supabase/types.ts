@@ -915,6 +915,7 @@ export type Database = {
           deposito_id: string
           empresa_id: string
           id: string
+          identificador: string
           nome: string
         }
         Insert: {
@@ -923,6 +924,7 @@ export type Database = {
           deposito_id: string
           empresa_id: string
           id?: string
+          identificador: string
           nome: string
         }
         Update: {
@@ -931,6 +933,7 @@ export type Database = {
           deposito_id?: string
           empresa_id?: string
           id?: string
+          identificador?: string
           nome?: string
         }
         Relationships: [
