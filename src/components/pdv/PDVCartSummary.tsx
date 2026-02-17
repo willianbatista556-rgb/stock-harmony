@@ -12,9 +12,10 @@ interface PDVCartSummaryProps {
   descontoGeral: number;
   total: number;
   lastReceipt?: ReceiptData | null;
+  printerCodepage?: string;
 }
 
-export const PDVCartSummary = memo(function PDVCartSummary({ items, descontoGeral, total, lastReceipt }: PDVCartSummaryProps) {
+export const PDVCartSummary = memo(function PDVCartSummary({ items, descontoGeral, total, lastReceipt, printerCodepage }: PDVCartSummaryProps) {
   const totalQtd = items.reduce((s, i) => s + i.qtd, 0);
   const totalBruto = items.reduce((s, i) => s + i.qtd * i.preco_unit, 0);
   const totalDescontoItens = items.reduce((s, i) => s + i.desconto, 0);
@@ -22,7 +23,7 @@ export const PDVCartSummary = memo(function PDVCartSummary({ items, descontoGera
   const handleReprint = async () => {
     if (!lastReceipt) return;
     try {
-      await printReceipt(lastReceipt);
+      await printReceipt(lastReceipt, { codepage: (printerCodepage as any) || undefined });
       toast.success('Cupom reimpresso!');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro ao imprimir.';

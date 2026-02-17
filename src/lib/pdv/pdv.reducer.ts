@@ -15,7 +15,7 @@ export type PDVAction =
   | { type: 'ADD_PAGAMENTO'; pagamento: Pagamento }
   | { type: 'REMOVE_PAGAMENTO'; index: number }
   | { type: 'SET_MODAL'; modal: PDVModal }
-  | { type: 'SET_CONFIG'; bloquearSemEstoque: boolean; permitirNegativo: boolean }
+  | { type: 'SET_CONFIG'; bloquearSemEstoque: boolean; permitirNegativo: boolean; printerCodepage?: string; printerBaudrate?: number }
   | { type: 'SET_LAST_RECEIPT'; receipt: ReceiptData | null }
   | { type: 'CLEAR_SALE' };
 
@@ -129,7 +129,7 @@ export function pdvReducer(state: PDVState, action: PDVAction): PDVState {
       return { ...state, modal: action.modal };
 
     case 'SET_CONFIG':
-      return { ...state, config: { bloquearSemEstoque: action.bloquearSemEstoque, permitirNegativo: action.permitirNegativo } };
+      return { ...state, config: { bloquearSemEstoque: action.bloquearSemEstoque, permitirNegativo: action.permitirNegativo, printerCodepage: action.printerCodepage ?? 'utf8', printerBaudrate: action.printerBaudrate ?? 9600 } };
 
     case 'SET_LAST_RECEIPT':
       return { ...state, lastReceipt: action.receipt };
