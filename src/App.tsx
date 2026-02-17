@@ -17,6 +17,7 @@ import Depositos from "./pages/Depositos";
 import Categorias from "./pages/Categorias";
 import Fornecedores from "./pages/Fornecedores";
 import Placeholder from "./pages/Placeholder";
+import FecharCaixa from "./pages/FecharCaixa";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -80,6 +81,7 @@ const App = () => (
             />
             <Route path="/pdv" element={<PDV />} />
             <Route path="/pdv/caixa" element={<PDVCaixa />} />
+            <Route path="/pdv/caixa/fechar" element={<FecharCaixa />} />
             <Route
               path="/caixa"
               element={
