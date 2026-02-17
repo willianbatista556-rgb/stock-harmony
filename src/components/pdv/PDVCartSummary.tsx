@@ -1,17 +1,34 @@
 import { memo } from 'react';
+import { Printer } from 'lucide-react';
 import { formatCurrency } from '@/lib/formatters';
 import { PDVItem } from '@/hooks/usePDV';
+import { Button } from '@/components/ui/button';
+import { printReceipt } from '@/lib/print';
+import type { ReceiptData } from '@/lib/print/types';
+import { toast } from 'sonner';
 
 interface PDVCartSummaryProps {
   items: PDVItem[];
   descontoGeral: number;
   total: number;
+  lastReceipt?: ReceiptData | null;
 }
 
-export const PDVCartSummary = memo(function PDVCartSummary({ items, descontoGeral, total }: PDVCartSummaryProps) {
+export const PDVCartSummary = memo(function PDVCartSummary({ items, descontoGeral, total, lastReceipt }: PDVCartSummaryProps) {
   const totalQtd = items.reduce((s, i) => s + i.qtd, 0);
   const totalBruto = items.reduce((s, i) => s + i.qtd * i.preco_unit, 0);
   const totalDescontoItens = items.reduce((s, i) => s + i.desconto, 0);
+
+  const handleReprint = async () => {
+    if (!lastReceipt) return;
+    try {
+      await printReceipt(lastReceipt);
+      toast.success('Cupom reimpresso!');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro ao imprimir.';
+      toast.error('Falha na reimpressão', { description: msg });
+    }
+  };
 
   return (
     <div className="bg-card rounded-xl border border-border/50 p-5 space-y-3">
@@ -39,6 +56,17 @@ export const PDVCartSummary = memo(function PDVCartSummary({ items, descontoGera
           </span>
         </div>
       </div>
+      {lastReceipt && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full gap-1.5"
+          onClick={handleReprint}
+        >
+          <Printer className="w-4 h-4" />
+          Reimprimir última venda
+        </Button>
+      )}
     </div>
   );
 });
