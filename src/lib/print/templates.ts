@@ -1,5 +1,9 @@
-import { EscPosBuilder } from './escpos'
+import { EscPosBuilder, Codepage } from './escpos'
 import { ReceiptData } from './types'
+
+export type ReceiptOptions = {
+  codepage?: Codepage
+}
 
 function money(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -13,11 +17,13 @@ function padLeft(s: string, len: number) {
   return (' '.repeat(len) + s).slice(-len)
 }
 
-export function buildReceipt80mm(data: ReceiptData) {
+export function buildReceipt80mm(data: ReceiptData, opts?: ReceiptOptions) {
   const b = new EscPosBuilder()
   const cols = 42
 
-  b.init().alignCenter().bold(true).sizeDouble()
+  b.init()
+  if (opts?.codepage) b.setCodepage(opts.codepage)
+  b.alignCenter().bold(true).sizeDouble()
   b.line(data.empresaNome ?? 'SUA EMPRESA')
   b.sizeNormal().bold(false)
 
