@@ -27,6 +27,7 @@ import {
   Pagamento, PDVDiscount,
 } from '@/lib/pdv';
 import { useSalvarOrcamento } from '@/lib/pdv/pdv.api';
+import { ensureClienteBalcao } from '@/lib/pdv/pdv.customers.api';
 
 // PDV UI components
 import { PDVSearch } from '@/components/pdv/PDVSearch';
@@ -117,6 +118,18 @@ export default function PDV() {
     }, 100);
     return () => clearTimeout(t);
   }, []);
+
+  // ── Auto-set Cliente Balcão on mount ───────────────────
+  useEffect(() => {
+    if (!profile?.empresa_id || state.customer) return;
+    ensureClienteBalcao(profile.empresa_id)
+      .then((clienteId) => {
+        dispatch({ type: 'SET_CUSTOMER', customer: { id: clienteId, nome: 'CLIENTE BALCAO' } });
+      })
+      .catch(() => {
+        // silent – balcão is optional
+      });
+  }, [profile?.empresa_id]);
 
   // ── Client-side product search ──────────────────────────
   useEffect(() => {
