@@ -16,10 +16,11 @@ interface PDVSearchProps {
   selectedIndex: number;
   onSelectProduct: (produto: Produto) => void;
   estoqueMap?: Record<string, number>;
+  bloquearSemEstoque?: boolean;
 }
 
 export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
-  function PDVSearch({ query, onQueryChange, onFocus, onClear, isSearchMode, results, selectedIndex, onSelectProduct, estoqueMap = {} }, ref) {
+  function PDVSearch({ query, onQueryChange, onFocus, onClear, isSearchMode, results, selectedIndex, onSelectProduct, estoqueMap = {}, bloquearSemEstoque = false }, ref) {
     return (
       <>
         <div className="relative">
@@ -44,45 +45,52 @@ export const PDVSearch = memo(forwardRef<HTMLInputElement, PDVSearchProps>(
 
         {isSearchMode && results.length > 0 && (
           <div className="absolute left-0 right-0 mx-3 mt-1 bg-card rounded-xl border border-border shadow-lg overflow-auto max-h-[350px] z-20">
-            {results.map((produto, i) => (
-              <button
-                key={produto.id}
-                onClick={() => onSelectProduct(produto)}
-                className={cn(
-                  'w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors border-b border-border/20 last:border-0',
-                  (estoqueMap[produto.id] ?? 0) <= 0
-                    ? 'bg-destructive/10 hover:bg-destructive/15'
-                    : i === selectedIndex ? 'bg-primary/8' : 'hover:bg-muted/40'
-                )}
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-foreground">{produto.nome}</p>
-                    {(estoqueMap[produto.id] ?? 0) <= 0 && (
-                      <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-1 font-semibold">
-                        <AlertTriangle className="w-3 h-3" />
-                        SEM ESTOQUE
-                      </Badge>
-                    )}
+            {results.map((produto, i) => {
+              const semEstoque = (estoqueMap[produto.id] ?? 0) <= 0;
+              const disabled = semEstoque && bloquearSemEstoque;
+              return (
+                <button
+                  key={produto.id}
+                  onClick={() => !disabled && onSelectProduct(produto)}
+                  disabled={disabled}
+                  className={cn(
+                    'w-full flex items-center justify-between px-4 py-3.5 text-left transition-colors border-b border-border/20 last:border-0',
+                    disabled
+                      ? 'bg-destructive/10 opacity-60 cursor-not-allowed'
+                      : semEstoque
+                        ? 'bg-destructive/10 hover:bg-destructive/15'
+                        : i === selectedIndex ? 'bg-primary/8' : 'hover:bg-muted/40'
+                  )}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-foreground">{produto.nome}</p>
+                      {semEstoque && (
+                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-1 font-semibold">
+                          <AlertTriangle className="w-3 h-3" />
+                          SEM ESTOQUE
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground font-mono">
+                      {produto.sku && <span>SKU: {produto.sku}</span>}
+                      {produto.ean && <span className="ml-3">EAN: {produto.ean}</span>}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground font-mono">
-                    {produto.sku && <span>SKU: {produto.sku}</span>}
-                    {produto.ean && <span className="ml-3">EAN: {produto.ean}</span>}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-0.5">
-                  <span className="font-bold tabular-nums font-mono text-lg text-primary">
-                    {formatCurrency(produto.preco_venda || 0)}
-                  </span>
-                  <span className={cn(
-                    'text-xs font-mono tabular-nums',
-                    (estoqueMap[produto.id] ?? 0) > 0 ? 'text-success' : 'text-destructive'
-                  )}>
-                    Est: {estoqueMap[produto.id] ?? 0}
-                  </span>
-                </div>
-              </button>
-            ))}
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="font-bold tabular-nums font-mono text-lg text-primary">
+                      {formatCurrency(produto.preco_venda || 0)}
+                    </span>
+                    <span className={cn(
+                      'text-xs font-mono tabular-nums',
+                      (estoqueMap[produto.id] ?? 0) > 0 ? 'text-success' : 'text-destructive'
+                    )}>
+                      Est: {estoqueMap[produto.id] ?? 0}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </>

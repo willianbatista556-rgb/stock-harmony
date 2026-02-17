@@ -524,6 +524,7 @@ export default function PDV() {
                 searchInputRef.current?.focus();
               }}
               estoqueMap={estoqueMap}
+              bloquearSemEstoque={state.config?.bloquearSemEstoque && !state.config?.permitirNegativo}
             />
           </div>
 
