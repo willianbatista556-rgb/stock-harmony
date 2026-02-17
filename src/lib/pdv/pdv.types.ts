@@ -28,10 +28,13 @@ export interface PDVDiscount {
 
 export type PDVMode = 'normal' | 'search' | 'quantity' | 'payment' | 'discount';
 
+export type PDVModal = 'customer' | 'discount' | 'hotkeys' | 'sangria' | 'suprimento' | null;
+
 export interface PDVState {
   items: PDVItem[];
   selectedIndex: number;
   mode: PDVMode;
+  modal: PDVModal;
   customer: PDVCustomer | null;
   discount: PDVDiscount;
   pagamentos: Pagamento[];
