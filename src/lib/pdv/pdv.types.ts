@@ -1,4 +1,5 @@
 import { Produto } from '@/hooks/useProdutos';
+import type { ReceiptData } from '@/lib/print/types';
 
 export interface PDVItem {
   id: string;
@@ -45,6 +46,7 @@ export interface PDVState {
   pagamentos: Pagamento[];
   idCounter: number;
   config: PDVConfig | null;
+  lastReceipt: ReceiptData | null;
 }
 
 export const modeLabel: Record<PDVMode, string> = {
