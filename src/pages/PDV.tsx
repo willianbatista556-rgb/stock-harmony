@@ -5,16 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useProdutos, Produto } from '@/hooks/useProdutos';
-import { useTerminais } from '@/hooks/useTerminais';
+import {
+  useTerminalByIdentificador, useCreateTerminal, useTerminais,
+  getOrCreateTerminalIdentificador, Terminal,
+} from '@/hooks/useTerminais';
 import { useDepositos } from '@/hooks/useDepositos';
 import { useCaixaAbertoPorTerminal } from '@/hooks/useCaixa';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import { toast } from 'sonner';
 
 // PDV architecture
@@ -40,33 +40,32 @@ import { CustomerModal } from '@/components/pdv/CustomerModal';
 import { DiscountModal } from '@/components/pdv/DiscountModal';
 import { ReceiptModal } from '@/components/pdv/ReceiptModal';
 
-const TERMINAL_LS_KEY = 'pdv_terminal_id';
-
 export default function PDV() {
   const navigate = useNavigate();
   const { user, profile, userRole, loading: authLoading } = useAuth();
   const { data: produtos = [] } = useProdutos();
-  const { data: terminais = [], isLoading: terminaisLoading } = useTerminais();
   const { data: depositos = [] } = useDepositos();
   const finalizarVenda = useFinalizarVenda();
   const salvarOrcamento = useSalvarOrcamento();
 
-  // ── Terminal from localStorage ──────────────────────────────
-  const [terminalId, setTerminalId] = useState(() => localStorage.getItem(TERMINAL_LS_KEY) || '');
+  // ── Auto-register terminal via identificador ───────────────
+  const terminalIdentificador = useMemo(() => getOrCreateTerminalIdentificador(), []);
+  const { data: terminalByIdent, isLoading: identLoading } = useTerminalByIdentificador(terminalIdentificador);
+  const createTerminal = useCreateTerminal();
+  const { data: terminais = [] } = useTerminais();
 
-  const handleTerminalChange = (id: string) => {
-    setTerminalId(id);
-    localStorage.setItem(TERMINAL_LS_KEY, id);
-  };
-
-  // Auto-select first terminal if none saved
+  // Auto-create terminal if not found
+  const [autoCreated, setAutoCreated] = useState(false);
   useEffect(() => {
-    if (!terminalId && terminais.length > 0) {
-      handleTerminalChange(terminais[0].id);
-    }
-  }, [terminais, terminalId]);
+    if (identLoading || autoCreated || terminalByIdent) return;
+    if (!profile?.empresa_id || depositos.length === 0) return;
+    createTerminal.mutate(
+      { nome: 'Terminal PDV', depositoId: depositos[0].id, identificador: terminalIdentificador },
+      { onSuccess: () => setAutoCreated(true) }
+    );
+  }, [identLoading, terminalByIdent, autoCreated, profile?.empresa_id, depositos, terminalIdentificador]);
 
-  const terminal = terminais.find(t => t.id === terminalId);
+  const terminal: Terminal | null = terminalByIdent || null;
   const depositoId = terminal?.deposito_id || '';
 
   // ── Local UI state ──────────────────────────────────────
@@ -74,7 +73,7 @@ export default function PDV() {
   const canBudget = userRole?.role === 'Admin' || userRole?.role === 'Gerente';
 
   // Caixa lookup: per terminal
-  const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAbertoPorTerminal(terminalId || undefined);
+  const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAbertoPorTerminal(terminal?.id);
 
   // ── Central state (useReducer) ──────────────────────────
   const [state, dispatch] = useReducer(pdvReducer, initialPDVState);
@@ -297,7 +296,7 @@ export default function PDV() {
   // ── Bootstrap Guards ────────────────────────────────────
 
   // 1. Loading
-  if (authLoading || terminaisLoading || caixaLoading) {
+  if (authLoading || identLoading || createTerminal.isPending || caixaLoading) {
     return (
       <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-4">
         <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center animate-pulse">
@@ -335,17 +334,17 @@ export default function PDV() {
     );
   }
 
-  // 4. No terminals registered
-  if (terminais.length === 0) {
+  // 4. No terminal found (auto-creation failed)
+  if (!terminal) {
     return (
       <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-6">
         <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
           <Landmark className="w-8 h-8 text-muted-foreground" />
         </div>
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-display font-bold text-foreground">Nenhum terminal cadastrado</h1>
+          <h1 className="text-2xl font-display font-bold text-foreground">Terminal não encontrado</h1>
           <p className="text-muted-foreground max-w-md">
-            Peça ao gerente para cadastrar terminais de PDV antes de operar.
+            Não foi possível registrar este terminal. Verifique se há depósitos cadastrados.
           </p>
         </div>
         <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
@@ -366,28 +365,12 @@ export default function PDV() {
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-display font-bold text-foreground">Caixa não aberto</h1>
           <p className="text-muted-foreground max-w-md">
-            Nenhum caixa aberto no terminal <strong>{terminal?.nome || '—'}</strong>. Abra o caixa ou selecione outro terminal.
+            Nenhum caixa aberto no terminal <strong>{terminal.nome}</strong>. Abra o caixa para operar.
           </p>
           <p className="text-xs text-muted-foreground">
             Operador: {profile.nome || profile.email} · Papel: {userRole?.role || '—'}
           </p>
         </div>
-
-        {terminais.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Terminal:</span>
-            <Select value={terminalId} onValueChange={handleTerminalChange}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Terminal" />
-              </SelectTrigger>
-              <SelectContent>
-                {terminais.map(t => (
-                  <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
 
         <div className="flex gap-3">
           <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
@@ -445,16 +428,10 @@ export default function PDV() {
           </button>
 
           {/* Terminal indicator */}
-          <Select value={terminalId} onValueChange={handleTerminalChange} disabled={state.items.length > 0}>
-            <SelectTrigger className="w-[160px] h-8 text-sm">
-              <SelectValue placeholder="Terminal" />
-            </SelectTrigger>
-            <SelectContent>
-              {terminais.map(t => (
-                <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Terminal indicator */}
+          <Badge variant="outline" className="text-xs px-2 py-1 font-mono">
+            {terminal?.nome || 'Terminal'}
+          </Badge>
 
           <Button variant="ghost" size="sm" onClick={() => navigate('/')} className="text-muted-foreground hover:text-foreground gap-1.5">
             <LogOut className="w-4 h-4" />
