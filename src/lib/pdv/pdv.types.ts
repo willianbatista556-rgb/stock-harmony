@@ -30,6 +30,11 @@ export type PDVMode = 'normal' | 'search' | 'quantity' | 'payment' | 'discount';
 
 export type PDVModal = 'customer' | 'discount' | 'hotkeys' | 'sangria' | 'suprimento' | null;
 
+export interface PDVConfig {
+  bloquearSemEstoque: boolean;
+  permitirNegativo: boolean;
+}
+
 export interface PDVState {
   items: PDVItem[];
   selectedIndex: number;
@@ -39,6 +44,7 @@ export interface PDVState {
   discount: PDVDiscount;
   pagamentos: Pagamento[];
   idCounter: number;
+  config: PDVConfig | null;
 }
 
 export const modeLabel: Record<PDVMode, string> = {
