@@ -1262,6 +1262,7 @@ export type Database = {
       }
     }
     Functions: {
+      ensure_cliente_balcao: { Args: { p_empresa_id: string }; Returns: string }
       finalizar_venda: {
         Args: {
           p_deposito_id: string
