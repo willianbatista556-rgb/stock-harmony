@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Produtos from "./pages/Produtos";
 import PDV from "./pages/PDV";
+import PDVCaixa from "./pages/PDVCaixa";
 import Caixa from "./pages/Caixa";
 import Movimentacoes from "./pages/Movimentacoes";
 import Depositos from "./pages/Depositos";
@@ -78,6 +79,7 @@ const App = () => (
               }
             />
             <Route path="/pdv" element={<PDV />} />
+            <Route path="/pdv/caixa" element={<PDVCaixa />} />
             <Route
               path="/caixa"
               element={

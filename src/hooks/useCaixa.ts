@@ -8,6 +8,7 @@ export interface Caixa {
   empresa_id: string;
   usuario_id: string;
   deposito_id: string;
+  terminal_id: string | null;
   valor_abertura: number;
   valor_fechamento: number | null;
   status: 'aberto' | 'fechado';
@@ -36,6 +37,31 @@ export interface FluxoDiario {
   num_movimentacoes: number;
 }
 
+// ── Queries ───────────────────────────────────────────────────
+
+/** Busca caixa aberto por terminal_id */
+export function useCaixaAbertoPorTerminal(terminalId?: string) {
+  const { profile } = useAuth();
+
+  return useQuery({
+    queryKey: ['caixa-aberto', 'terminal', terminalId],
+    queryFn: async () => {
+      if (!profile?.empresa_id || !terminalId) return null;
+      const { data, error } = await supabase
+        .from('caixas')
+        .select('*')
+        .eq('empresa_id', profile.empresa_id)
+        .eq('terminal_id', terminalId)
+        .eq('status', 'aberto')
+        .maybeSingle();
+      if (error) throw error;
+      return data as Caixa | null;
+    },
+    enabled: !!profile?.empresa_id && !!terminalId,
+  });
+}
+
+/** Legacy: busca caixa aberto por deposito_id (backward compat) */
 export function useCaixaAberto(depositoId?: string) {
   const { profile } = useAuth();
 
@@ -43,17 +69,12 @@ export function useCaixaAberto(depositoId?: string) {
     queryKey: ['caixa-aberto', profile?.empresa_id, depositoId],
     queryFn: async () => {
       if (!profile?.empresa_id) return null;
-
       let query = supabase
         .from('caixas')
         .select('*')
         .eq('empresa_id', profile.empresa_id)
         .eq('status', 'aberto');
-
-      if (depositoId) {
-        query = query.eq('deposito_id', depositoId);
-      }
-
+      if (depositoId) query = query.eq('deposito_id', depositoId);
       const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as Caixa | null;
@@ -62,7 +83,7 @@ export function useCaixaAberto(depositoId?: string) {
   });
 }
 
-// List all open caixas for the empresa (used by Caixa page)
+/** Lista todos os caixas abertos da empresa */
 export function useCaixasAbertos() {
   const { profile } = useAuth();
 
@@ -139,12 +160,14 @@ export function useFluxoCaixa() {
   });
 }
 
+// ── Mutations ─────────────────────────────────────────────────
+
 export function useAbrirCaixa() {
   const queryClient = useQueryClient();
   const { profile, user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ depositoId, valorAbertura }: { depositoId: string; valorAbertura: number }) => {
+    mutationFn: async ({ depositoId, terminalId, valorAbertura }: { depositoId: string; terminalId: string; valorAbertura: number }) => {
       if (!profile?.empresa_id || !user?.id) throw new Error('Usuário não autenticado');
 
       const { data, error } = await supabase
@@ -153,6 +176,7 @@ export function useAbrirCaixa() {
           empresa_id: profile.empresa_id,
           usuario_id: user.id,
           deposito_id: depositoId,
+          terminal_id: terminalId,
           valor_abertura: valorAbertura,
           status: 'aberto',
         })
@@ -226,7 +250,6 @@ export function useSangria() {
   return useMutation({
     mutationFn: async ({ caixaId, valor, descricao }: { caixaId: string; valor: number; descricao: string }) => {
       if (!profile?.empresa_id || !user?.id) throw new Error('Usuário não autenticado');
-
       const { error } = await supabase.from('caixa_movimentacoes').insert({
         caixa_id: caixaId,
         empresa_id: profile.empresa_id,
@@ -235,7 +258,6 @@ export function useSangria() {
         descricao,
         usuario_id: user.id,
       });
-
       if (error) throw error;
     },
     onSuccess: () => {
@@ -256,7 +278,6 @@ export function useSuprimento() {
   return useMutation({
     mutationFn: async ({ caixaId, valor, descricao }: { caixaId: string; valor: number; descricao: string }) => {
       if (!profile?.empresa_id || !user?.id) throw new Error('Usuário não autenticado');
-
       const { error } = await supabase.from('caixa_movimentacoes').insert({
         caixa_id: caixaId,
         empresa_id: profile.empresa_id,
@@ -265,7 +286,6 @@ export function useSuprimento() {
         descricao,
         usuario_id: user.id,
       });
-
       if (error) throw error;
     },
     onSuccess: () => {

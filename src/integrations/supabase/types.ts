@@ -139,6 +139,7 @@ export type Database = {
           id: string
           observacao_fechamento: string | null
           status: string
+          terminal_id: string | null
           usuario_id: string
           valor_abertura: number
           valor_fechamento: number | null
@@ -151,6 +152,7 @@ export type Database = {
           id?: string
           observacao_fechamento?: string | null
           status?: string
+          terminal_id?: string | null
           usuario_id: string
           valor_abertura?: number
           valor_fechamento?: number | null
@@ -163,6 +165,7 @@ export type Database = {
           id?: string
           observacao_fechamento?: string | null
           status?: string
+          terminal_id?: string | null
           usuario_id?: string
           valor_abertura?: number
           valor_fechamento?: number | null
@@ -187,6 +190,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "caixas_terminal_id_fkey"
+            columns: ["terminal_id"]
+            isOneToOne: false
+            referencedRelation: "terminais"
             referencedColumns: ["id"]
           },
         ]
@@ -891,6 +901,55 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      terminais: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          deposito_id: string
+          empresa_id: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          deposito_id: string
+          empresa_id: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          deposito_id?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminais_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "terminais_deposito_id_fkey"
+            columns: ["deposito_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "terminais_empresa_id_fkey"
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
