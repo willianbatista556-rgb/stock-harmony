@@ -1,4 +1,5 @@
 import { Produto } from '@/hooks/useProdutos';
+import type { ReceiptData } from '@/lib/print/types';
 import { PDVState, PDVItem, Pagamento, PDVMode, PDVCustomer, PDVDiscount, PDVModal, PDVConfig } from './pdv.types';
 
 // ── Action types ──────────────────────────────────────────────
@@ -15,6 +16,7 @@ export type PDVAction =
   | { type: 'REMOVE_PAGAMENTO'; index: number }
   | { type: 'SET_MODAL'; modal: PDVModal }
   | { type: 'SET_CONFIG'; bloquearSemEstoque: boolean; permitirNegativo: boolean }
+  | { type: 'SET_LAST_RECEIPT'; receipt: ReceiptData | null }
   | { type: 'CLEAR_SALE' };
 
 // ── Initial state ─────────────────────────────────────────────
@@ -28,6 +30,7 @@ export const initialPDVState: PDVState = {
   pagamentos: [],
   idCounter: 0,
   config: null,
+  lastReceipt: null,
 };
 
 // ── Helper: recalculate subtotal ──────────────────────────────
@@ -128,8 +131,11 @@ export function pdvReducer(state: PDVState, action: PDVAction): PDVState {
     case 'SET_CONFIG':
       return { ...state, config: { bloquearSemEstoque: action.bloquearSemEstoque, permitirNegativo: action.permitirNegativo } };
 
+    case 'SET_LAST_RECEIPT':
+      return { ...state, lastReceipt: action.receipt };
+
     case 'CLEAR_SALE':
-      return { ...initialPDVState, config: state.config };
+      return { ...initialPDVState, config: state.config, lastReceipt: state.lastReceipt };
 
     default:
       return state;
