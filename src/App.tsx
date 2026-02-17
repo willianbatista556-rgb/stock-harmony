@@ -117,7 +117,7 @@ const App = () => (
               }
             />
             <Route
-              path="/inventario"
+              path="/estoque/inventarios"
               element={
                 <AppLayout>
                   <Inventario />
@@ -125,7 +125,7 @@ const App = () => (
               }
             />
             <Route
-              path="/inventario/:id"
+              path="/estoque/inventarios/:id"
               element={
                 <AppLayout>
                   <InventarioContagem />
@@ -133,7 +133,7 @@ const App = () => (
               }
             />
             <Route
-              path="/inventario/:id/completo"
+              path="/estoque/inventarios/:id/completo"
               element={
                 <AppLayout>
                   <InventarioCompleto />
