@@ -624,7 +624,6 @@ export default function PDV() {
           onOpenChange={setShowCaixaMov}
           caixaId={caixaAberto.id}
           empresaId={profile.empresa_id}
-          usuarioId={user.id}
         />
       )}
     </div>
