@@ -86,6 +86,7 @@ export function useCreateTerminal() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['terminais'] });
+      queryClient.invalidateQueries({ queryKey: ['terminal-by-id'] });
       toast.success('Terminal criado!');
     },
     onError: (error: Error) => {
