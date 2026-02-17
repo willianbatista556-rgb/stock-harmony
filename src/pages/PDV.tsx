@@ -271,6 +271,7 @@ export default function PDV() {
     onCustomer: () => dispatch({ type: 'SET_MODAL', modal: 'customer' }),
     onSuprimento: () => { if (caixaAberto && !budgetMode) dispatch({ type: 'SET_MODAL', modal: 'suprimento' }); },
     onSangria: () => { if (caixaAberto && !budgetMode) dispatch({ type: 'SET_MODAL', modal: 'sangria' }); },
+    onFecharCaixa: () => { if (caixaAberto) navigate('/pdv/caixa/fechar'); },
     onCancel: () => {
       if (state.modal) {
         dispatch({ type: 'SET_MODAL', modal: null });

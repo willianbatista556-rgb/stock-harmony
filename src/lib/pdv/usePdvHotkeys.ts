@@ -9,6 +9,7 @@ export interface HotkeyHandlers {
   onCustomer: () => void;
   onSuprimento: () => void;
   onSangria: () => void;
+  onFecharCaixa: () => void;
   onCancel: () => void;
   onRemoveItem: () => void;
   onArrowUp: () => void;
@@ -68,6 +69,10 @@ export function usePdvHotkeys(h: HotkeyHandlers) {
         case 'F8':
           e.preventDefault();
           h.onSangria();
+          return;
+        case 'F9':
+          e.preventDefault();
+          h.onFecharCaixa();
           return;
       }
 
