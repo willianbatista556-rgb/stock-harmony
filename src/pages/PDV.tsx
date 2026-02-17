@@ -442,7 +442,12 @@ export default function PDV() {
             )}
           >
             <User className="w-3.5 h-3.5" />
-            {state.customer ? state.customer.nome : 'Cliente'}
+            <div className="text-left">
+              <div>{state.customer ? state.customer.nome : 'Cliente'}</div>
+              {state.customer?.cpf_cnpj && (
+                <div className="text-[10px] text-muted-foreground font-mono leading-tight">{state.customer.cpf_cnpj}</div>
+              )}
+            </div>
             <kbd className="px-1 py-0.5 rounded bg-muted font-mono text-[10px] font-bold">F3</kbd>
           </button>
 
