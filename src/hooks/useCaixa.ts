@@ -36,23 +36,49 @@ export interface FluxoDiario {
   num_movimentacoes: number;
 }
 
-export function useCaixaAberto() {
-  const { user } = useAuth();
+export function useCaixaAberto(depositoId?: string) {
+  const { profile } = useAuth();
 
   return useQuery({
-    queryKey: ['caixa-aberto', user?.id],
+    queryKey: ['caixa-aberto', profile?.empresa_id, depositoId],
     queryFn: async () => {
-      if (!user?.id) return null;
-      const { data, error } = await supabase
+      if (!profile?.empresa_id) return null;
+
+      let query = supabase
         .from('caixas')
         .select('*')
-        .eq('usuario_id', user.id)
-        .eq('status', 'aberto')
-        .maybeSingle();
+        .eq('empresa_id', profile.empresa_id)
+        .eq('status', 'aberto');
+
+      if (depositoId) {
+        query = query.eq('deposito_id', depositoId);
+      }
+
+      const { data, error } = await query.maybeSingle();
       if (error) throw error;
       return data as Caixa | null;
     },
-    enabled: !!user?.id,
+    enabled: !!profile?.empresa_id && (depositoId ? !!depositoId : true),
+  });
+}
+
+// List all open caixas for the empresa (used by Caixa page)
+export function useCaixasAbertos() {
+  const { profile } = useAuth();
+
+  return useQuery({
+    queryKey: ['caixas-abertos', profile?.empresa_id],
+    queryFn: async () => {
+      if (!profile?.empresa_id) return [];
+      const { data, error } = await supabase
+        .from('caixas')
+        .select('*')
+        .eq('empresa_id', profile.empresa_id)
+        .eq('status', 'aberto');
+      if (error) throw error;
+      return (data || []) as Caixa[];
+    },
+    enabled: !!profile?.empresa_id,
   });
 }
 
@@ -149,6 +175,7 @@ export function useAbrirCaixa() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['caixa-aberto'] });
+      queryClient.invalidateQueries({ queryKey: ['caixas-abertos'] });
       queryClient.invalidateQueries({ queryKey: ['caixas-historico'] });
       queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] });
       toast.success('Caixa aberto com sucesso!');
@@ -181,6 +208,7 @@ export function useFecharCaixa() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['caixa-aberto'] });
+      queryClient.invalidateQueries({ queryKey: ['caixas-abertos'] });
       queryClient.invalidateQueries({ queryKey: ['caixas-historico'] });
       queryClient.invalidateQueries({ queryKey: ['fluxo-caixa'] });
       toast.success('Caixa fechado com sucesso!');
