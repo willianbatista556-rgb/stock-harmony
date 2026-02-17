@@ -8,8 +8,40 @@ export interface Terminal {
   empresa_id: string;
   deposito_id: string;
   nome: string;
+  identificador: string;
   ativo: boolean;
   criado_em: string;
+}
+
+const LS_TERMINAL_KEY = 'pdv_terminal_identificador';
+
+export function getOrCreateTerminalIdentificador(): string {
+  if (typeof window === 'undefined') return '';
+  const existing = window.localStorage.getItem(LS_TERMINAL_KEY);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  window.localStorage.setItem(LS_TERMINAL_KEY, id);
+  return id;
+}
+
+export function useTerminalByIdentificador(identificador: string) {
+  const { profile } = useAuth();
+
+  return useQuery({
+    queryKey: ['terminal-by-id', profile?.empresa_id, identificador],
+    queryFn: async () => {
+      if (!profile?.empresa_id || !identificador) return null;
+      const { data, error } = await supabase
+        .from('terminais')
+        .select('*')
+        .eq('empresa_id', profile.empresa_id)
+        .eq('identificador', identificador)
+        .maybeSingle();
+      if (error) throw error;
+      return data as Terminal | null;
+    },
+    enabled: !!profile?.empresa_id && !!identificador,
+  });
 }
 
 export function useTerminais() {
@@ -37,7 +69,7 @@ export function useCreateTerminal() {
   const { profile } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ nome, depositoId }: { nome: string; depositoId: string }) => {
+    mutationFn: async ({ nome, depositoId, identificador }: { nome: string; depositoId: string; identificador?: string }) => {
       if (!profile?.empresa_id) throw new Error('Empresa não encontrada');
       const { data, error } = await supabase
         .from('terminais')
@@ -45,6 +77,7 @@ export function useCreateTerminal() {
           empresa_id: profile.empresa_id,
           deposito_id: depositoId,
           nome,
+          identificador: identificador || crypto.randomUUID(),
         })
         .select()
         .single();
