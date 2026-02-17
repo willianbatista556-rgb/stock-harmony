@@ -193,6 +193,13 @@ export default function InventarioContagem() {
     const handler = (e: KeyboardEvent) => {
       // Don't capture if modal open
       if (showQtdModal || showFinalizar || showIniciar) return;
+
+      // F9 = open finalize dialog
+      if (e.key === 'F9') {
+        e.preventDefault();
+        if (currentItens.length > 0) setShowFinalizar(true);
+        return;
+      }
       
       // Focus search on any printable character if not focused
       if (document.activeElement !== inputRef.current && e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -201,7 +208,7 @@ export default function InventarioContagem() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isContagem, showQtdModal, showFinalizar, showIniciar]);
+  }, [isContagem, showQtdModal, showFinalizar, showIniciar, currentItens.length]);
 
   const handleIniciar = async () => {
     if (!inventarioId) return;
@@ -231,7 +238,7 @@ export default function InventarioContagem() {
   const handleCancelar = async () => {
     if (!inventarioId) return;
     await cancelar.mutateAsync(inventarioId);
-    navigate('/inventario');
+    navigate('/estoque/inventarios');
   };
 
   // Stats
@@ -244,7 +251,7 @@ export default function InventarioContagem() {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <AlertTriangle className="w-12 h-12 text-muted-foreground/40" />
         <p className="text-muted-foreground">Inventário não encontrado.</p>
-        <Button variant="outline" onClick={() => navigate('/inventario')}>Voltar</Button>
+        <Button variant="outline" onClick={() => navigate('/estoque/inventarios')}>Voltar</Button>
       </div>
     );
   }
@@ -261,7 +268,7 @@ export default function InventarioContagem() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/inventario')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/estoque/inventarios')}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -285,7 +292,7 @@ export default function InventarioContagem() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {!isRascunho && status !== 'cancelado' && (
-            <Button variant="outline" size="sm" onClick={() => navigate(`/inventario/${inventarioId}/completo`)} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => navigate(`/estoque/inventarios/${inventarioId}/completo`)} className="gap-1.5">
               <List className="w-4 h-4" /> Modo Completo
             </Button>
           )}
@@ -351,7 +358,7 @@ export default function InventarioContagem() {
                   Contagem #{maxContagem}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  Enter = +1 · F6 = quantidade · ↑↓ = navegar
+                  Enter = +1 · F6 = quantidade · F9 = fechar · ↑↓ = navegar
                 </span>
               </div>
               <div className="relative">

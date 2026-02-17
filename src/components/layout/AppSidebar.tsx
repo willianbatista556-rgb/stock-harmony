@@ -34,7 +34,7 @@ const menuItems = [
   { icon: ArrowRightLeft, label: 'Movimentações', path: '/movimentacoes' },
   { icon: Truck, label: 'Fornecedores', path: '/fornecedores' },
   { icon: ShoppingCart, label: 'Compras', path: '/compras' },
-  { icon: ClipboardList, label: 'Inventário', path: '/inventario' },
+  { icon: ClipboardList, label: 'Inventário', path: '/estoque/inventarios' },
 ];
 
 const bottomItems = [

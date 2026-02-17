@@ -268,7 +268,7 @@ export default function InventarioCompleto() {
   const handleCancelar = async () => {
     if (!inventarioId) return;
     await cancelar.mutateAsync(inventarioId);
-    navigate('/inventario');
+    navigate('/estoque/inventarios');
   };
 
   if (!inventario) {
@@ -276,7 +276,7 @@ export default function InventarioCompleto() {
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <AlertTriangle className="w-12 h-12 text-muted-foreground/40" />
         <p className="text-muted-foreground">Inventário não encontrado.</p>
-        <Button variant="outline" onClick={() => navigate('/inventario')}>Voltar</Button>
+        <Button variant="outline" onClick={() => navigate('/estoque/inventarios')}>Voltar</Button>
       </div>
     );
   }
@@ -293,7 +293,7 @@ export default function InventarioCompleto() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/inventario/${inventarioId}`)}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`/estoque/inventarios/${inventarioId}`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
@@ -316,7 +316,7 @@ export default function InventarioCompleto() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" onClick={() => navigate(`/inventario/${inventarioId}`)} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => navigate(`/estoque/inventarios/${inventarioId}`)} className="gap-1.5">
             <ClipboardList className="w-4 h-4" /> Modo Rápido
           </Button>
           <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">

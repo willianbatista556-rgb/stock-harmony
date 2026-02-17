@@ -43,7 +43,7 @@ export default function Inventario() {
     setShowNew(false);
     setDepositoId('');
     setObservacao('');
-    navigate(`/inventario/${id}`);
+    navigate(`/estoque/inventarios/${id}`);
   };
 
   const depositoNome = (id: string) => depositos.find(d => d.id === id)?.nome || '—';
@@ -122,7 +122,7 @@ export default function Inventario() {
                   <TableRow
                     key={inv.id}
                     className="hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => navigate(`/inventario/${inv.id}`)}
+                    onClick={() => navigate(`/estoque/inventarios/${inv.id}`)}
                   >
                     <TableCell className="font-mono text-sm">{formatDate(inv.criado_em)}</TableCell>
                     <TableCell>{depositoNome(inv.deposito_id)}</TableCell>
