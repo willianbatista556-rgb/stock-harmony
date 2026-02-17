@@ -580,6 +580,7 @@ export type Database = {
       }
       inventario_itens: {
         Row: {
+          contagem: number
           criado_em: string
           diferenca: number | null
           id: string
@@ -590,6 +591,7 @@ export type Database = {
           qtd_sistema: number | null
         }
         Insert: {
+          contagem?: number
           criado_em?: string
           diferenca?: number | null
           id?: string
@@ -600,6 +602,7 @@ export type Database = {
           qtd_sistema?: number | null
         }
         Update: {
+          contagem?: number
           criado_em?: string
           diferenca?: number | null
           id?: string
@@ -633,6 +636,49 @@ export type Database = {
           },
         ]
       }
+      inventario_snapshot: {
+        Row: {
+          id: string
+          inventario_id: string
+          produto_id: string
+          qtd_esperada: number
+        }
+        Insert: {
+          id?: string
+          inventario_id: string
+          produto_id: string
+          qtd_esperada?: number
+        }
+        Update: {
+          id?: string
+          inventario_id?: string
+          produto_id?: string
+          qtd_esperada?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventario_snapshot_inventario_id_fkey"
+            columns: ["inventario_id"]
+            isOneToOne: false
+            referencedRelation: "inventarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_snapshot_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventario_snapshot_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
       inventarios: {
         Row: {
           aplicado_em: string | null
@@ -641,6 +687,7 @@ export type Database = {
           empresa_id: string
           finalizado_em: string | null
           id: string
+          iniciado_em: string | null
           observacao: string | null
           status: string
           usuario_id: string
@@ -652,6 +699,7 @@ export type Database = {
           empresa_id: string
           finalizado_em?: string | null
           id?: string
+          iniciado_em?: string | null
           observacao?: string | null
           status?: string
           usuario_id: string
@@ -663,6 +711,7 @@ export type Database = {
           empresa_id?: string
           finalizado_em?: string | null
           id?: string
+          iniciado_em?: string | null
           observacao?: string | null
           status?: string
           usuario_id?: string
@@ -1456,6 +1505,14 @@ export type Database = {
       inventario_finalizar: {
         Args: { p_inventario_id: string }
         Returns: undefined
+      }
+      inventario_iniciar: {
+        Args: { p_inventario_id: string }
+        Returns: undefined
+      }
+      inventario_iniciar_recontagem: {
+        Args: { p_inventario_id: string }
+        Returns: number
       }
       pdv_finalizar_venda: {
         Args: {

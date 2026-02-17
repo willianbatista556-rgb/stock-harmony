@@ -11,6 +11,7 @@ export interface Inventario {
   status: string;
   observacao: string | null;
   criado_em: string;
+  iniciado_em: string | null;
   finalizado_em: string | null;
   aplicado_em: string | null;
 }
@@ -23,6 +24,7 @@ export interface InventarioItem {
   qtd_sistema: number | null;
   diferenca: number | null;
   nome_snapshot: string | null;
+  contagem: number;
   criado_em: string;
 }
 
@@ -74,6 +76,7 @@ export function useCriarInventario() {
           empresa_id: profile.empresa_id,
           deposito_id: depositoId,
           usuario_id: user.id,
+          status: 'rascunho',
           observacao: observacao || null,
         })
         .select('id')
@@ -88,25 +91,42 @@ export function useCriarInventario() {
   });
 }
 
+export function useIniciarInventario() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (inventarioId: string) => {
+      const { error } = await supabase.rpc('inventario_iniciar', {
+        p_inventario_id: inventarioId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventarios'] });
+      toast.success('Inventário iniciado! Snapshot do estoque capturado.');
+    },
+    onError: (e: Error) => toast.error('Erro ao iniciar: ' + e.message),
+  });
+}
+
 export function useAdicionarItemInventario() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      inventarioId,
-      produtoId,
-      qtd,
+      inventarioId, produtoId, qtd, contagem = 1,
     }: {
       inventarioId: string;
       produtoId: string;
       qtd: number;
+      contagem?: number;
     }) => {
-      // Upsert: if item exists, add to qty
+      // Upsert: if item exists for this contagem, add to qty
       const { data: existing } = await supabase
         .from('inventario_itens')
         .select('id, qtd_contada')
         .eq('inventario_id', inventarioId)
         .eq('produto_id', produtoId)
+        .eq('contagem', contagem)
         .maybeSingle();
 
       if (existing) {
@@ -122,6 +142,7 @@ export function useAdicionarItemInventario() {
             inventario_id: inventarioId,
             produto_id: produtoId,
             qtd_contada: qtd,
+            contagem,
           });
         if (error) throw error;
       }
@@ -163,9 +184,28 @@ export function useFinalizarInventario() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventarios'] });
       queryClient.invalidateQueries({ queryKey: ['inventario-itens'] });
-      toast.success('Inventário finalizado! Revise as divergências.');
+      toast.success('Contagem finalizada! Revise as divergências.');
     },
     onError: (e: Error) => toast.error('Erro ao finalizar: ' + e.message),
+  });
+}
+
+export function useIniciarRecontagem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (inventarioId: string) => {
+      const { data, error } = await supabase.rpc('inventario_iniciar_recontagem', {
+        p_inventario_id: inventarioId,
+      });
+      if (error) throw error;
+      return data as number;
+    },
+    onSuccess: (contagem) => {
+      queryClient.invalidateQueries({ queryKey: ['inventarios'] });
+      queryClient.invalidateQueries({ queryKey: ['inventario-itens'] });
+      toast.success(`Recontagem #${contagem} iniciada para itens divergentes.`);
+    },
+    onError: (e: Error) => toast.error('Erro: ' + e.message),
   });
 }
 

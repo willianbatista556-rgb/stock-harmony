@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ClipboardList, Plus, Eye, CheckCircle2, XCircle, Clock, Package,
+  ClipboardList, Plus, Eye, CheckCircle2, XCircle, Clock, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -18,13 +18,12 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useInventarios, useCriarInventario } from '@/hooks/useInventarios';
 import { useDepositos } from '@/hooks/useDepositos';
-import { formatCurrency } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  em_andamento: { label: 'Em Andamento', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
-  finalizado: { label: 'Finalizado', color: 'bg-primary/10 text-primary border-primary/20', icon: Eye },
-  aplicado: { label: 'Aplicado', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
+  rascunho: { label: 'Rascunho', color: 'bg-muted text-muted-foreground border-border', icon: FileText },
+  em_contagem: { label: 'Em Contagem', color: 'bg-warning/10 text-warning border-warning/20', icon: Clock },
+  fechado: { label: 'Fechado', color: 'bg-success/10 text-success border-success/20', icon: CheckCircle2 },
   cancelado: { label: 'Cancelado', color: 'bg-destructive/10 text-destructive border-destructive/20', icon: XCircle },
 };
 
@@ -59,12 +58,11 @@ export default function Inventario() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Inventário</h1>
           <p className="text-muted-foreground mt-1">
-            Contagem cega de estoque com detecção automática de divergências
+            Contagem de estoque com snapshot, divergências e recontagem
           </p>
         </div>
         <Button className="gradient-primary text-primary-foreground hover:opacity-90 gap-2" onClick={() => setShowNew(true)}>
@@ -73,9 +71,8 @@ export default function Inventario() {
         </Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {(['em_andamento', 'finalizado', 'aplicado', 'cancelado'] as const).map(status => {
+        {(['rascunho', 'em_contagem', 'fechado', 'cancelado'] as const).map(status => {
           const cfg = statusConfig[status];
           const count = inventarios.filter(i => i.status === status).length;
           return (
@@ -94,7 +91,6 @@ export default function Inventario() {
         })}
       </div>
 
-      {/* Table */}
       <div className="bg-card rounded-xl shadow-card border border-border/50 overflow-hidden">
         {isLoading ? (
           <p className="text-sm text-muted-foreground text-center py-12 animate-pulse">Carregando…</p>
@@ -110,17 +106,18 @@ export default function Inventario() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Data</TableHead>
+                <TableHead className="font-semibold">Criado</TableHead>
                 <TableHead className="font-semibold">Depósito</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
-                <TableHead className="font-semibold">Finalizado</TableHead>
-                <TableHead className="font-semibold">Aplicado</TableHead>
+                <TableHead className="font-semibold">Iniciado</TableHead>
+                <TableHead className="font-semibold">Fechado</TableHead>
+                <TableHead className="font-semibold">Ajustado</TableHead>
                 <TableHead className="w-24"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {inventarios.map((inv, idx) => {
-                const cfg = statusConfig[inv.status] || statusConfig.em_andamento;
+              {inventarios.map(inv => {
+                const cfg = statusConfig[inv.status] || statusConfig.rascunho;
                 return (
                   <TableRow
                     key={inv.id}
@@ -134,6 +131,7 @@ export default function Inventario() {
                         {cfg.label}
                       </Badge>
                     </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{formatDate(inv.iniciado_em)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(inv.finalizado_em)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDate(inv.aplicado_em)}</TableCell>
                     <TableCell>
@@ -149,7 +147,6 @@ export default function Inventario() {
         )}
       </div>
 
-      {/* New Inventory Dialog */}
       <Dialog open={showNew} onOpenChange={setShowNew}>
         <DialogContent className="bg-card max-w-md">
           <DialogHeader>
@@ -162,9 +159,7 @@ export default function Inventario() {
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Depósito</label>
               <Select value={depositoId} onValueChange={setDepositoId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o depósito" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Selecione o depósito" /></SelectTrigger>
                 <SelectContent>
                   {depositos.map(d => (
                     <SelectItem key={d.id} value={d.id}>{d.nome}</SelectItem>
@@ -174,22 +169,13 @@ export default function Inventario() {
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-1.5 block">Observação (opcional)</label>
-              <Textarea
-                value={observacao}
-                onChange={e => setObservacao(e.target.value)}
-                placeholder="Ex: Inventário mensal janeiro"
-                rows={2}
-              />
+              <Textarea value={observacao} onChange={e => setObservacao(e.target.value)} placeholder="Ex: Inventário mensal janeiro" rows={2} />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNew(false)}>Cancelar</Button>
-            <Button
-              onClick={handleCriar}
-              disabled={!depositoId || criarInventario.isPending}
-              className="gradient-primary text-primary-foreground"
-            >
-              Iniciar Contagem
+            <Button onClick={handleCriar} disabled={!depositoId || criarInventario.isPending} className="gradient-primary text-primary-foreground">
+              Criar Rascunho
             </Button>
           </DialogFooter>
         </DialogContent>
