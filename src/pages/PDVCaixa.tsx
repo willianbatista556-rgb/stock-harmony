@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Landmark, DoorOpen, DoorClosed, ArrowDownCircle, ArrowUpCircle,
@@ -13,24 +13,23 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { formatCurrency, formatTime } from '@/lib/formatters';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTerminais } from '@/hooks/useTerminais';
+import {
+  useTerminalByIdentificador, useCreateTerminal, useTerminais,
+  getOrCreateTerminalIdentificador, Terminal,
+} from '@/hooks/useTerminais';
 import { useDepositos } from '@/hooks/useDepositos';
 import {
   useCaixaAbertoPorTerminal, useCaixaMovimentacoes,
   useAbrirCaixa, useFecharCaixa, useSangria, useSuprimento,
   CaixaMovimentacao,
 } from '@/hooks/useCaixa';
+import { CaixaPanel } from '@/components/pdv/CaixaPanel';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-
-const TERMINAL_LS_KEY = 'pdv_terminal_id';
 
 const tipoLabel: Record<string, string> = {
   venda: 'Venda', sangria: 'Sangria', suprimento: 'Suprimento', abertura: 'Abertura',
@@ -43,37 +42,41 @@ const tipoColor: Record<string, string> = {
 export default function PDVCaixa() {
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
-  const { data: terminais = [], isLoading: terminaisLoading } = useTerminais();
   const { data: depositos = [] } = useDepositos();
 
-  // Terminal from localStorage
-  const [terminalId, setTerminalId] = useState(() => localStorage.getItem(TERMINAL_LS_KEY) || '');
+  // Auto-register terminal via identificador in localStorage
+  const terminalIdentificador = useMemo(() => getOrCreateTerminalIdentificador(), []);
+  const { data: terminalByIdent, isLoading: identLoading } = useTerminalByIdentificador(terminalIdentificador);
+  const createTerminal = useCreateTerminal();
+  const { data: terminais = [] } = useTerminais();
 
-  const handleTerminalChange = (id: string) => {
-    setTerminalId(id);
-    localStorage.setItem(TERMINAL_LS_KEY, id);
-  };
+  // Auto-create terminal if not found and depositos available
+  const [autoCreated, setAutoCreated] = useState(false);
+  useEffect(() => {
+    if (identLoading || autoCreated || terminalByIdent) return;
+    if (!profile?.empresa_id || depositos.length === 0) return;
+    
+    // Auto-create terminal linked to first deposito
+    createTerminal.mutate(
+      { nome: 'Terminal PDV', depositoId: depositos[0].id, identificador: terminalIdentificador },
+      { onSuccess: () => setAutoCreated(true) }
+    );
+  }, [identLoading, terminalByIdent, autoCreated, profile?.empresa_id, depositos, terminalIdentificador]);
 
-  const terminal = terminais.find(t => t.id === terminalId);
+  const terminal: Terminal | null = terminalByIdent || null;
   const depositoNome = terminal ? depositos.find(d => d.id === terminal.deposito_id)?.nome : null;
 
   // Caixa for this terminal
-  const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAbertoPorTerminal(terminalId || undefined);
+  const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAbertoPorTerminal(terminal?.id);
   const { data: movimentacoes = [] } = useCaixaMovimentacoes(caixaAberto?.id);
 
   const abrirCaixa = useAbrirCaixa();
-  const fecharCaixa = useFecharCaixa();
+  const fecharCaixaM = useFecharCaixa();
   const sangriaM = useSangria();
   const suprimentoM = useSuprimento();
 
-  const [showAbrir, setShowAbrir] = useState(false);
-  const [showFechar, setShowFechar] = useState(false);
   const [showSangria, setShowSangria] = useState(false);
   const [showSuprimento, setShowSuprimento] = useState(false);
-
-  const [valorAbertura, setValorAbertura] = useState('');
-  const [valorFechamento, setValorFechamento] = useState('');
-  const [observacaoFechamento, setObservacaoFechamento] = useState('');
   const [valorMov, setValorMov] = useState('');
   const [descricaoMov, setDescricaoMov] = useState('');
 
@@ -83,29 +86,21 @@ export default function PDVCaixa() {
   );
 
   // ── Handlers ────────────────────────────────────────────────
-  const handleAbrir = async () => {
-    if (!terminal) { toast.error('Selecione um terminal'); return; }
-    const val = parseFloat(valorAbertura) || 0;
+  const handleAbrir = async (saldoInicial: number) => {
+    if (!terminal) { toast.error('Terminal não encontrado'); return; }
     await abrirCaixa.mutateAsync({
       depositoId: terminal.deposito_id,
       terminalId: terminal.id,
-      valorAbertura: val,
+      valorAbertura: saldoInicial,
     });
-    setShowAbrir(false);
-    setValorAbertura('');
   };
 
   const handleFechar = async () => {
     if (!caixaAberto) return;
-    const val = parseFloat(valorFechamento) || 0;
-    await fecharCaixa.mutateAsync({
+    await fecharCaixaM.mutateAsync({
       caixaId: caixaAberto.id,
-      valorFechamento: val,
-      observacao: observacaoFechamento,
+      valorFechamento: saldoAtual,
     });
-    setShowFechar(false);
-    setValorFechamento('');
-    setObservacaoFechamento('');
   };
 
   const handleSangria = async () => {
@@ -129,7 +124,9 @@ export default function PDVCaixa() {
   };
 
   // ── Guards ──────────────────────────────────────────────────
-  if (authLoading || terminaisLoading) {
+  const isLoading = authLoading || identLoading || createTerminal.isPending;
+
+  if (isLoading) {
     return (
       <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-4">
         <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center animate-pulse">
@@ -150,17 +147,16 @@ export default function PDVCaixa() {
     );
   }
 
-  // No terminals yet
-  if (terminais.length === 0) {
+  if (!terminal) {
     return (
       <div className="h-screen w-screen fixed inset-0 bg-background flex flex-col items-center justify-center z-50 gap-6">
         <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
           <Landmark className="w-8 h-8 text-muted-foreground" />
         </div>
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-display font-bold text-foreground">Nenhum terminal cadastrado</h1>
+          <h1 className="text-2xl font-display font-bold text-foreground">Terminal não encontrado</h1>
           <p className="text-muted-foreground max-w-md">
-            Peça ao gerente para cadastrar terminais de PDV antes de operar.
+            Não foi possível registrar este terminal. Verifique se há depósitos cadastrados.
           </p>
         </div>
         <Button variant="outline" onClick={() => navigate('/')} className="gap-2">
@@ -181,28 +177,13 @@ export default function PDVCaixa() {
           <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
             <Landmark className="w-5 h-5 text-primary-foreground" />
           </div>
-          <h1 className="text-lg font-display font-bold text-foreground tracking-tight">Caixa do Terminal</h1>
+          <div>
+            <h1 className="text-lg font-display font-bold text-foreground tracking-tight">Caixa do Terminal</h1>
+            <p className="text-xs text-muted-foreground">{terminal.nome} · {depositoNome || 'Depósito'}</p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Terminal selector */}
-          <Select value={terminalId} onValueChange={handleTerminalChange}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Selecione o terminal" />
-            </SelectTrigger>
-            <SelectContent>
-              {terminais.map(t => (
-                <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {terminal && !caixaAberto && !caixaLoading && (
-            <Button onClick={() => { setValorAbertura(''); setShowAbrir(true); }} className="gradient-primary text-primary-foreground gap-2">
-              <DoorOpen className="w-4 h-4" /> Abrir Caixa
-            </Button>
-          )}
-
           {caixaAberto && (
             <>
               <Badge className="bg-success/10 text-success border-success/20 px-3 py-1.5 font-mono">
@@ -214,9 +195,6 @@ export default function PDVCaixa() {
               </Button>
               <Button variant="outline" size="sm" onClick={() => { setValorMov(''); setDescricaoMov(''); setShowSuprimento(true); }} className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10">
                 <ArrowUpCircle className="w-4 h-4" /> Suprimento
-              </Button>
-              <Button variant="destructive" size="sm" onClick={() => setShowFechar(true)} className="gap-1.5">
-                <DoorClosed className="w-4 h-4" /> Fechar Caixa
               </Button>
             </>
           )}
@@ -232,38 +210,42 @@ export default function PDVCaixa() {
 
       {/* Content */}
       <div className="flex-1 overflow-auto p-6">
-        {!terminalId && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-muted-foreground">
-            <Landmark className="w-16 h-16 opacity-20" />
-            <p>Selecione um terminal para gerenciar o caixa.</p>
-          </div>
-        )}
-
-        {terminalId && caixaLoading && (
+        {caixaLoading && (
           <div className="flex items-center justify-center h-full">
             <p className="text-muted-foreground animate-pulse">Verificando caixa…</p>
           </div>
         )}
 
-        {terminalId && !caixaLoading && !caixaAberto && (
-          <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center">
-              <DoorClosed className="w-10 h-10 text-muted-foreground" />
+        {!caixaLoading && !caixaAberto && (
+          <div className="flex flex-col items-center justify-center h-full gap-6">
+            <div className="max-w-md w-full">
+              <CaixaPanel
+                terminalNome={terminal.nome}
+                caixaAberto={false}
+                saldoInicial={0}
+                onAbrir={handleAbrir}
+                onFechar={handleFechar}
+                disabled={abrirCaixa.isPending}
+              />
             </div>
-            <h2 className="text-xl font-display font-bold text-foreground">Caixa fechado</h2>
-            <p className="text-muted-foreground">
-              Terminal: <strong>{terminal?.nome}</strong>
-              {depositoNome && <> · Depósito: <strong>{depositoNome}</strong></>}
-            </p>
-            <Button onClick={() => { setValorAbertura(''); setShowAbrir(true); }} className="gradient-primary text-primary-foreground gap-2 h-12 text-lg px-8">
-              <DoorOpen className="w-5 h-5" /> Abrir Caixa
-            </Button>
           </div>
         )}
 
-        {terminalId && !caixaLoading && caixaAberto && (
+        {!caixaLoading && caixaAberto && (
           <div className="space-y-6 max-w-5xl mx-auto">
-            {/* Summary */}
+            {/* CaixaPanel for close action */}
+            <div className="max-w-md">
+              <CaixaPanel
+                terminalNome={terminal.nome}
+                caixaAberto={true}
+                saldoInicial={caixaAberto.valor_abertura}
+                onAbrir={handleAbrir}
+                onFechar={handleFechar}
+                disabled={fecharCaixaM.isPending}
+              />
+            </div>
+
+            {/* Summary Cards */}
             <div className="grid grid-cols-4 gap-4">
               <Card className="bg-card shadow-card">
                 <CardContent className="pt-5">
@@ -333,61 +315,6 @@ export default function PDVCaixa() {
       </div>
 
       {/* ── Dialogs ──────────────────────────────────────────── */}
-      <Dialog open={showAbrir} onOpenChange={setShowAbrir}>
-        <DialogContent className="bg-card max-w-sm">
-          <DialogHeader><DialogTitle>Abrir Caixa — {terminal?.nome}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            {depositoNome && (
-              <p className="text-sm text-muted-foreground">Depósito: <strong>{depositoNome}</strong></p>
-            )}
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Valor de abertura (R$)</label>
-              <Input type="number" min="0" step="0.01" value={valorAbertura} onChange={e => setValorAbertura(e.target.value)} placeholder="0,00" autoFocus />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAbrir(false)}>Cancelar</Button>
-            <Button onClick={handleAbrir} disabled={abrirCaixa.isPending} className="gradient-primary text-primary-foreground">
-              {abrirCaixa.isPending ? 'Abrindo...' : 'Abrir Caixa'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showFechar} onOpenChange={setShowFechar}>
-        <DialogContent className="bg-card max-w-sm">
-          <DialogHeader><DialogTitle>Fechar Caixa</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Saldo esperado:</span>
-              <span className="font-mono font-bold">{formatCurrency(saldoAtual)}</span>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Valor contado (R$)</label>
-              <Input type="number" min="0" step="0.01" value={valorFechamento} onChange={e => setValorFechamento(e.target.value)} placeholder="0,00" autoFocus />
-            </div>
-            {valorFechamento && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Diferença:</span>
-                <span className={cn('font-mono font-bold', (parseFloat(valorFechamento) - saldoAtual) >= 0 ? 'text-success' : 'text-destructive')}>
-                  {formatCurrency(parseFloat(valorFechamento) - saldoAtual)}
-                </span>
-              </div>
-            )}
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Observação (opcional)</label>
-              <Textarea value={observacaoFechamento} onChange={e => setObservacaoFechamento(e.target.value)} placeholder="Observação do fechamento..." rows={2} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFechar(false)}>Cancelar</Button>
-            <Button variant="destructive" onClick={handleFechar} disabled={fecharCaixa.isPending}>
-              {fecharCaixa.isPending ? 'Fechando...' : 'Fechar Caixa'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       <Dialog open={showSangria} onOpenChange={setShowSangria}>
         <DialogContent className="bg-card max-w-sm">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><ArrowDownCircle className="w-5 h-5 text-destructive" />Sangria</DialogTitle></DialogHeader>
