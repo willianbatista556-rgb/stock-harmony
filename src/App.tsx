@@ -18,6 +18,7 @@ import Categorias from "./pages/Categorias";
 import Fornecedores from "./pages/Fornecedores";
 import Placeholder from "./pages/Placeholder";
 import FecharCaixa from "./pages/FecharCaixa";
+import PDVTerminal from "./pages/PDVTerminal";
 import Configuracoes from "./pages/Configuracoes";
 import Inventario from "./pages/Inventario";
 import InventarioContagem from "./pages/InventarioContagem";
@@ -86,6 +87,7 @@ const App = () => (
             <Route path="/pdv" element={<PDV />} />
             <Route path="/pdv/caixa" element={<PDVCaixa />} />
             <Route path="/pdv/caixa/fechar" element={<FecharCaixa />} />
+            <Route path="/pdv/terminal" element={<PDVTerminal />} />
             <Route
               path="/caixa"
               element={
