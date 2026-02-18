@@ -50,18 +50,20 @@ export default function PDVCaixa() {
   const createTerminal = useCreateTerminal();
   const { data: terminais = [] } = useTerminais();
 
-  // Auto-create terminal if not found and depositos available
-  const [autoCreated, setAutoCreated] = useState(false);
+  // Redirect to terminal config if no terminal found or no deposito_id
   useEffect(() => {
-    if (identLoading || autoCreated || terminalByIdent) return;
-    if (!profile?.empresa_id || depositos.length === 0) return;
-    
-    // Auto-create terminal linked to first deposito
-    createTerminal.mutate(
-      { nome: 'Terminal PDV', depositoId: depositos[0].id, identificador: terminalIdentificador },
-      { onSuccess: () => setAutoCreated(true) }
-    );
-  }, [identLoading, terminalByIdent, autoCreated, profile?.empresa_id, depositos, terminalIdentificador]);
+    if (identLoading) return;
+    if (!terminalByIdent) {
+      // No terminal registered for this browser — go configure
+      if (profile?.empresa_id && depositos.length > 0) {
+        navigate('/pdv/terminal', { replace: true });
+      }
+      return;
+    }
+    if (!terminalByIdent.deposito_id) {
+      navigate('/pdv/terminal', { replace: true });
+    }
+  }, [identLoading, terminalByIdent, profile?.empresa_id, depositos, navigate]);
 
   const terminal: Terminal | null = terminalByIdent || null;
   const depositoNome = terminal ? depositos.find(d => d.id === terminal.deposito_id)?.nome : null;
