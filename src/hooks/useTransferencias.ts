@@ -10,7 +10,7 @@ export interface Transferencia {
   destino_id: string;
   usuario_id: string;
   confirmado_por: string | null;
-  status: 'pendente' | 'em_transito' | 'confirmada' | 'cancelada';
+  status: 'rascunho' | 'pendente_envio' | 'em_recebimento' | 'confirmada' | 'cancelada';
   observacao: string | null;
   criado_em: string;
   confirmado_em: string | null;
@@ -82,7 +82,7 @@ export function useCriarTransferencia() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transferencias'] });
-      toast.success('Transferência criada (pendente)');
+      toast.success('Transferência criada (rascunho)');
     },
     onError: (error: Error) => {
       toast.error('Erro na transferência: ' + error.message);
@@ -90,25 +90,45 @@ export function useCriarTransferencia() {
   });
 }
 
+const invalidateAll = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ['transferencias'] });
+  queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
+  queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
+  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+};
+
 export function useEnviarTransferencia() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('transferencia_enviar', {
-        p_transferencia_id: id,
-      });
+      const { error } = await supabase.rpc('transferencia_enviar', { p_transferencia_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transferencias'] });
-      queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
-      queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast.success('Transferência enviada! Estoque debitado da origem.');
+      toast.success('Transferência enviada! Aguardando recebimento no destino.');
     },
     onError: (error: Error) => {
       toast.error('Erro ao enviar: ' + error.message);
+    },
+  });
+}
+
+export function useReceberTransferencia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('transferencia_receber', { p_transferencia_id: id });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transferencias'] });
+      toast.success('Recebimento iniciado! Confira os itens e confirme.');
+    },
+    onError: (error: Error) => {
+      toast.error('Erro ao receber: ' + error.message);
     },
   });
 }
@@ -118,17 +138,12 @@ export function useConfirmarTransferencia() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('transferencia_confirmar', {
-        p_transferencia_id: id,
-      });
+      const { error } = await supabase.rpc('transferencia_confirmar', { p_transferencia_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transferencias'] });
-      queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
-      queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast.success('Recebimento confirmado! Estoque creditado no destino.');
+      invalidateAll(queryClient);
+      toast.success('Transferência confirmada! Estoque movimentado.');
     },
     onError: (error: Error) => {
       toast.error('Erro ao confirmar: ' + error.message);
@@ -141,16 +156,11 @@ export function useCancelarTransferencia() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('transferencia_cancelar', {
-        p_transferencia_id: id,
-      });
+      const { error } = await supabase.rpc('transferencia_cancelar', { p_transferencia_id: id });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transferencias'] });
-      queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
-      queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Transferência cancelada.');
     },
     onError: (error: Error) => {
