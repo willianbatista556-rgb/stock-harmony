@@ -1310,6 +1310,7 @@ export type Database = {
           nome_snapshot: string | null
           produto_id: string
           qtd: number
+          qtd_conferida: number
           transferencia_id: string
         }
         Insert: {
@@ -1317,6 +1318,7 @@ export type Database = {
           nome_snapshot?: string | null
           produto_id: string
           qtd: number
+          qtd_conferida?: number
           transferencia_id: string
         }
         Update: {
@@ -1324,6 +1326,7 @@ export type Database = {
           nome_snapshot?: string | null
           produto_id?: string
           qtd?: number
+          qtd_conferida?: number
           transferencia_id?: string
         }
         Relationships: [
@@ -1812,6 +1815,14 @@ export type Database = {
             Returns: string
           }
       text2ltree: { Args: { "": string }; Returns: unknown }
+      transferencia_bipar_item: {
+        Args: {
+          p_barcode: string
+          p_quantidade?: number
+          p_transferencia_id: string
+        }
+        Returns: Json
+      }
       transferencia_cancelar: {
         Args: { p_transferencia_id: string }
         Returns: undefined
@@ -1842,6 +1853,10 @@ export type Database = {
         Returns: undefined
       }
       transferencia_receber: {
+        Args: { p_transferencia_id: string }
+        Returns: undefined
+      }
+      transferencia_resetar_conferencia: {
         Args: { p_transferencia_id: string }
         Returns: undefined
       }
