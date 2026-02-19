@@ -540,6 +540,69 @@ export type Database = {
           },
         ]
       }
+      estoque_saldos: {
+        Row: {
+          empresa_id: string
+          id: string
+          local_id: string
+          produto_id: string
+          saldo: number
+          updated_at: string
+        }
+        Insert: {
+          empresa_id: string
+          id?: string
+          local_id: string
+          produto_id: string
+          saldo?: number
+          updated_at?: string
+        }
+        Update: {
+          empresa_id?: string
+          id?: string
+          local_id?: string
+          produto_id?: string
+          saldo?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estoque_saldos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_saldos_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_saldos_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "estoque_saldos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estoque_saldos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
       fornecedores: {
         Row: {
           cnpj_cpf: string | null
@@ -847,6 +910,81 @@ export type Database = {
           },
           {
             foreignKeyName: "movimentacoes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
+      movimentacoes_estoque: {
+        Row: {
+          criado_em: string
+          empresa_id: string
+          id: string
+          local_id: string
+          origem: string
+          produto_id: string
+          quantidade: number
+          ref_id: string | null
+          tipo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          empresa_id: string
+          id?: string
+          local_id: string
+          origem: string
+          produto_id: string
+          quantidade: number
+          ref_id?: string | null
+          tipo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          empresa_id?: string
+          id?: string
+          local_id?: string
+          origem?: string
+          produto_id?: string
+          quantidade?: number
+          ref_id?: string | null
+          tipo?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "movimentacoes_estoque_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_estoque_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_estoque_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_estoque_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "movimentacoes_estoque_produto_id_fkey"
             columns: ["produto_id"]
             isOneToOne: false
             referencedRelation: "vw_previsao_ruptura"
@@ -1522,20 +1660,36 @@ export type Database = {
         Args: { p_inventario_id: string }
         Returns: number
       }
-      pdv_finalizar_venda: {
-        Args: {
-          p_caixa_id: string
-          p_cliente_id: string
-          p_deposito_id: string
-          p_desconto: number
-          p_empresa_id: string
-          p_itens: Json
-          p_pagamentos: Json
-          p_subtotal: number
-          p_total: number
-        }
-        Returns: string
-      }
+      pdv_finalizar_venda:
+        | {
+            Args: {
+              p_caixa_id: string
+              p_cliente_id: string
+              p_deposito_id: string
+              p_desconto: number
+              p_empresa_id: string
+              p_itens: Json
+              p_local_id: string
+              p_pagamentos: Json
+              p_subtotal: number
+              p_total: number
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              p_caixa_id: string
+              p_cliente_id: string
+              p_deposito_id: string
+              p_desconto: number
+              p_empresa_id: string
+              p_itens: Json
+              p_pagamentos: Json
+              p_subtotal: number
+              p_total: number
+            }
+            Returns: string
+          }
       text2ltree: { Args: { "": string }; Returns: unknown }
     }
     Enums: {
