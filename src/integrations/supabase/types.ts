@@ -1816,10 +1816,12 @@ export type Database = {
         Args: { p_transferencia_id: string }
         Returns: undefined
       }
-      transferencia_confirmar: {
-        Args: { p_transferencia_id: string }
-        Returns: undefined
-      }
+      transferencia_confirmar:
+        | { Args: { p_transferencia_id: string }; Returns: undefined }
+        | {
+            Args: { p_local_id?: string; p_transferencia_id: string }
+            Returns: undefined
+          }
       transferencia_criar: {
         Args: {
           p_destino_id: string
