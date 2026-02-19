@@ -49,6 +49,7 @@ export interface PDVState {
   idCounter: number;
   config: PDVConfig | null;
   lastReceipt: ReceiptData | null;
+  localId: string | null;
 }
 
 export const modeLabel: Record<PDVMode, string> = {

@@ -17,6 +17,7 @@ export type PDVAction =
   | { type: 'SET_MODAL'; modal: PDVModal }
   | { type: 'SET_CONFIG'; bloquearSemEstoque: boolean; permitirNegativo: boolean; printerCodepage?: string; printerBaudrate?: number }
   | { type: 'SET_LAST_RECEIPT'; receipt: ReceiptData | null }
+  | { type: 'SET_LOCAL_ID'; localId: string }
   | { type: 'CLEAR_SALE' };
 
 // ── Initial state ─────────────────────────────────────────────
@@ -31,6 +32,7 @@ export const initialPDVState: PDVState = {
   idCounter: 0,
   config: null,
   lastReceipt: null,
+  localId: null,
 };
 
 // ── Helper: recalculate subtotal ──────────────────────────────
@@ -134,8 +136,11 @@ export function pdvReducer(state: PDVState, action: PDVAction): PDVState {
     case 'SET_LAST_RECEIPT':
       return { ...state, lastReceipt: action.receipt };
 
+    case 'SET_LOCAL_ID':
+      return { ...state, localId: action.localId };
+
     case 'CLEAR_SALE':
-      return { ...initialPDVState, config: state.config, lastReceipt: state.lastReceipt };
+      return { ...initialPDVState, config: state.config, lastReceipt: state.lastReceipt, localId: state.localId };
 
     default:
       return state;

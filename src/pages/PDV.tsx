@@ -62,22 +62,30 @@ export default function PDV() {
   const { data: terminais = [] } = useTerminais();
 
   // Auto-create terminal if not found + ensure cliente balcão
+  // Redirect to terminal config if no deposito_id (local)
   const [autoCreated, setAutoCreated] = useState(false);
   useEffect(() => {
-    if (identLoading || autoCreated || terminalByIdent) return;
-    if (!profile?.empresa_id || depositos.length === 0) return;
-    createTerminal.mutate(
-      { nome: 'Terminal PDV', depositoId: depositos[0].id, identificador: terminalIdentificador },
-      {
-        onSuccess: () => {
-          setAutoCreated(true);
-          ensureClienteBalcao(profile.empresa_id!).then((balcId) => {
-            dispatch({ type: 'SET_CUSTOMER', customer: { id: balcId, nome: 'CLIENTE BALCAO' } });
-          }).catch(() => {});
-        },
+    if (identLoading) return;
+    
+    // Terminal exists but has no deposito (local) configured → redirect
+    if (terminalByIdent && !terminalByIdent.deposito_id) {
+      navigate('/pdv/terminal', { replace: true });
+      return;
+    }
+
+    // No terminal registered for this browser → redirect to configure
+    if (!terminalByIdent && !autoCreated) {
+      if (profile?.empresa_id && depositos.length > 0) {
+        navigate('/pdv/terminal', { replace: true });
       }
-    );
-  }, [identLoading, terminalByIdent, autoCreated, profile?.empresa_id, depositos, terminalIdentificador]);
+      return;
+    }
+
+    // Terminal exists with deposito → set localId in state
+    if (terminalByIdent?.deposito_id) {
+      dispatch({ type: 'SET_LOCAL_ID', localId: terminalByIdent.deposito_id });
+    }
+  }, [identLoading, terminalByIdent, autoCreated, profile?.empresa_id, depositos, navigate]);
 
   // When terminal already exists, ensure cliente balcão on first load
   const [balcaoLoaded, setBalcaoLoaded] = useState(false);
