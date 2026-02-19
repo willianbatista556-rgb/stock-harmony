@@ -138,7 +138,7 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
           {/* Flow info */}
           <div className="rounded-lg border border-border p-3 bg-muted/30">
             <p className="text-xs text-muted-foreground">
-              <strong>Fluxo:</strong> Pendente → <span className="text-primary font-medium">Enviar</span> (debita origem) → <span className="text-success font-medium">Receber</span> (credita destino)
+              <strong>Fluxo:</strong> Rascunho → <span className="text-warning font-medium">Enviar</span> → <span className="text-primary font-medium">Receber</span> → <span className="text-success font-medium">Confirmar</span> (movimenta estoque)
             </p>
           </div>
 
@@ -209,7 +209,7 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
             disabled={criar.isPending}
             className="gradient-primary text-white"
           >
-            Criar Pendente
+            Criar Rascunho
           </Button>
         </DialogFooter>
       </DialogContent>
