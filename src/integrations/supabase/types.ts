@@ -1304,6 +1304,127 @@ export type Database = {
           },
         ]
       }
+      transferencia_itens: {
+        Row: {
+          id: string
+          nome_snapshot: string | null
+          produto_id: string
+          qtd: number
+          transferencia_id: string
+        }
+        Insert: {
+          id?: string
+          nome_snapshot?: string | null
+          produto_id: string
+          qtd: number
+          transferencia_id: string
+        }
+        Update: {
+          id?: string
+          nome_snapshot?: string | null
+          produto_id?: string
+          qtd?: number
+          transferencia_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transferencia_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencia_itens_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "transferencia_itens_transferencia_id_fkey"
+            columns: ["transferencia_id"]
+            isOneToOne: false
+            referencedRelation: "transferencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transferencias: {
+        Row: {
+          confirmado_em: string | null
+          confirmado_por: string | null
+          criado_em: string
+          destino_id: string
+          empresa_id: string
+          id: string
+          observacao: string | null
+          origem_id: string
+          status: string
+          usuario_id: string
+        }
+        Insert: {
+          confirmado_em?: string | null
+          confirmado_por?: string | null
+          criado_em?: string
+          destino_id: string
+          empresa_id: string
+          id?: string
+          observacao?: string | null
+          origem_id: string
+          status?: string
+          usuario_id: string
+        }
+        Update: {
+          confirmado_em?: string | null
+          confirmado_por?: string | null
+          criado_em?: string
+          destino_id?: string
+          empresa_id?: string
+          id?: string
+          observacao?: string | null
+          origem_id?: string
+          status?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transferencias_destino_id_fkey"
+            columns: ["destino_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_destino_id_fkey"
+            columns: ["destino_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "transferencias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_origem_id_fkey"
+            columns: ["origem_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transferencias_origem_id_fkey"
+            columns: ["origem_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -1691,6 +1812,25 @@ export type Database = {
             Returns: string
           }
       text2ltree: { Args: { "": string }; Returns: unknown }
+      transferencia_cancelar: {
+        Args: { p_transferencia_id: string }
+        Returns: undefined
+      }
+      transferencia_confirmar: {
+        Args: { p_transferencia_id: string }
+        Returns: undefined
+      }
+      transferencia_criar: {
+        Args: {
+          p_destino_id: string
+          p_empresa_id: string
+          p_imediata?: boolean
+          p_itens: Json
+          p_observacao?: string
+          p_origem_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "Admin" | "Gerente" | "Operador" | "View"

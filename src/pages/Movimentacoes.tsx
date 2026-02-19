@@ -3,6 +3,7 @@ import { ArrowDownRight, ArrowUpRight, RefreshCcw, Plus, Search, Filter, Calenda
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -35,6 +36,7 @@ import { useProdutos } from '@/hooks/useProdutos';
 import { Skeleton } from '@/components/ui/skeleton';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import TransferenciasTab from '@/components/transferencias/TransferenciasTab';
 
 // Validation schema matching database constraints
 const movimentacaoSchema = z.object({
@@ -153,14 +155,25 @@ export default function Movimentacoes() {
         <div>
           <h1 className="text-3xl font-display font-bold text-foreground">Movimentações</h1>
           <p className="text-muted-foreground mt-1">
-            Registre entradas, saídas e ajustes de estoque
+            Registre entradas, saídas, ajustes e transferências de estoque
           </p>
         </div>
-        <Button onClick={openCreateDialog} className="gradient-primary text-white hover:opacity-90 gap-2">
-          <Plus className="w-4 h-4" />
-          Nova Movimentação
-        </Button>
       </div>
+
+      <Tabs defaultValue="movimentacoes" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
+          <TabsTrigger value="transferencias">Transferências</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="movimentacoes" className="space-y-4">
+          {/* Action button */}
+          <div className="flex justify-end">
+            <Button onClick={openCreateDialog} className="gradient-primary text-white hover:opacity-90 gap-2">
+              <Plus className="w-4 h-4" />
+              Nova Movimentação
+            </Button>
+          </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
@@ -430,6 +443,12 @@ export default function Movimentacoes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+
+        <TabsContent value="transferencias">
+          <TransferenciasTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
