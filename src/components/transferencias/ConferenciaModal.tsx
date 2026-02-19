@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Check, RotateCcw, ScanBarcode, AlertTriangle, CheckCircle2, Clock, MinusCircle, PlusCircle } from 'lucide-react';
+import { Check, RotateCcw, ScanBarcode, AlertTriangle, CheckCircle2, Clock, MinusCircle, PlusCircle, Keyboard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -32,7 +32,10 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [justificativa, setJustificativa] = useState('');
   const [showJustificativa, setShowJustificativa] = useState(false);
+  const [manualQty, setManualQty] = useState<number | null>(null);
+  const [showQtyInput, setShowQtyInput] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const qtyInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const confirmar = useConfirmarTransferencia();
 
@@ -49,23 +52,28 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
     return conf > 0 && conf !== i.qtd;
   });
   const itensNaoConferidos = itens.filter(i => (i.qtd_conferida || 0) === 0);
+  const progressPct = totalEsperado > 0 ? Math.min(100, (totalConferido / totalEsperado) * 100) : 0;
 
   useEffect(() => {
     if (open) {
       setShowJustificativa(false);
       setJustificativa('');
       setLastScan(null);
+      setManualQty(null);
+      setShowQtyInput(false);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
 
-  const handleScan = useCallback(async () => {
+  const handleScan = useCallback(async (qty?: number) => {
     if (!barcode.trim() || scanning) return;
     setScanning(true);
+    const quantidade = qty ?? manualQty ?? 1;
     try {
       const { data, error } = await supabase.rpc('transferencia_bipar_item', {
         p_transferencia_id: transferencia.id,
         p_barcode: barcode.trim(),
+        p_quantidade: quantidade,
       });
       if (error) throw error;
       const result = data as unknown as ScanResult;
@@ -83,10 +91,39 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
       toast.error(err.message || 'Erro ao bipar');
     } finally {
       setBarcode('');
+      setManualQty(null);
+      setShowQtyInput(false);
       setScanning(false);
       inputRef.current?.focus();
     }
-  }, [barcode, scanning, transferencia.id, queryClient]);
+  }, [barcode, scanning, transferencia.id, queryClient, manualQty]);
+
+  // Hotkeys: F6 = quantity, F9 = finalize, Esc = close qty input
+  useEffect(() => {
+    if (!open || showJustificativa) return;
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'F6') {
+        e.preventDefault();
+        setShowQtyInput(true);
+        setTimeout(() => qtyInputRef.current?.focus(), 50);
+      }
+      if (e.key === 'F9') {
+        e.preventDefault();
+        handleTentarConfirmar();
+      }
+      if (e.key === 'Escape' && showQtyInput) {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowQtyInput(false);
+        setManualQty(null);
+        inputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open, showJustificativa, showQtyInput]);
 
   const handleReset = async () => {
     try {
@@ -135,7 +172,7 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" onEscapeKeyDown={(e) => { if (showQtyInput) e.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ScanBarcode className="w-5 h-5 text-primary" />
@@ -144,32 +181,79 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Scan input */}
+          {/* Hotkeys hint */}
           {!showJustificativa && (
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  ref={inputRef}
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleScan()}
-                  placeholder="Bipe ou digite EAN/SKU..."
-                  className="pl-10 text-lg h-12 font-mono"
-                  autoFocus
-                  disabled={scanning}
-                />
+            <div className="flex items-center gap-3 text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+              <Keyboard className="w-3.5 h-3.5 shrink-0" />
+              <span><kbd className="px-1.5 py-0.5 rounded bg-background border text-[10px] font-mono">Enter</kbd> Bipar</span>
+              <span><kbd className="px-1.5 py-0.5 rounded bg-background border text-[10px] font-mono">F6</kbd> Quantidade</span>
+              <span><kbd className="px-1.5 py-0.5 rounded bg-background border text-[10px] font-mono">F9</kbd> Finalizar</span>
+            </div>
+          )}
+
+          {/* Scan input + quantity */}
+          {!showJustificativa && (
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <ScanBarcode className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    ref={inputRef}
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleScan()}
+                    placeholder="Bipe ou digite EAN/SKU..."
+                    className="pl-10 text-lg h-12 font-mono"
+                    autoFocus
+                    disabled={scanning}
+                  />
+                </div>
+                {manualQty !== null && (
+                  <Badge variant="outline" className="h-12 px-4 text-lg font-mono border-primary text-primary self-center">
+                    ×{manualQty}
+                  </Badge>
+                )}
+                <Button onClick={() => handleScan()} disabled={!barcode.trim() || scanning} className="h-12 px-6">
+                  Bipar
+                </Button>
               </div>
-              <Button onClick={handleScan} disabled={!barcode.trim() || scanning} className="h-12 px-6">
-                Bipar
-              </Button>
+
+              {/* Manual quantity input (F6) */}
+              {showQtyInput && (
+                <div className="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg p-2">
+                  <span className="text-sm font-medium text-primary">Quantidade:</span>
+                  <Input
+                    ref={qtyInputRef}
+                    type="number"
+                    min={1}
+                    className="w-24 h-8 text-center font-mono"
+                    placeholder="1"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = parseInt((e.target as HTMLInputElement).value);
+                        if (val > 0) {
+                          setManualQty(val);
+                          setShowQtyInput(false);
+                          inputRef.current?.focus();
+                        }
+                      }
+                      if (e.key === 'Escape') {
+                        setShowQtyInput(false);
+                        setManualQty(null);
+                        inputRef.current?.focus();
+                      }
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">Enter p/ confirmar, Esc p/ cancelar</span>
+                </div>
+              )}
             </div>
           )}
 
           {/* Last scan feedback */}
           {lastScan && !showJustificativa && (
             <div className={cn(
-              "rounded-lg border p-3 text-sm",
+              "rounded-lg border p-3 text-sm animate-in fade-in slide-in-from-top-1 duration-200",
               lastScan.status === 'ok' && "bg-success/10 border-success/30 text-success",
               lastScan.status === 'excesso' && "bg-warning/10 border-warning/30 text-warning",
               lastScan.status === 'pendente' && "bg-primary/10 border-primary/30 text-primary",
@@ -181,31 +265,32 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
           )}
 
           {/* Progress */}
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              Progresso: <strong className="text-foreground">{totalConferido}</strong> / {totalEsperado} itens
-            </span>
-            <div className="flex gap-2">
-              {todosConferidos && (
-                <Badge className="bg-success/10 text-success border-success/30">Tudo conferido!</Badge>
-              )}
-              {temDivergencia && (
-                <Badge className="bg-destructive/10 text-destructive border-destructive/30 gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Divergência
-                </Badge>
-              )}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Progresso: <strong className="text-foreground">{totalConferido}</strong> / {totalEsperado} itens
+              </span>
+              <div className="flex gap-2">
+                {todosConferidos && (
+                  <Badge className="bg-success/10 text-success border-success/30">Tudo conferido!</Badge>
+                )}
+                {temDivergencia && (
+                  <Badge className="bg-destructive/10 text-destructive border-destructive/30 gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Divergência
+                  </Badge>
+                )}
+              </div>
             </div>
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full bg-muted rounded-full h-2">
-            <div
-              className={cn(
-                "h-2 rounded-full transition-all",
-                todosConferidos ? "bg-success" : temDivergencia ? "bg-destructive" : "bg-primary"
-              )}
-              style={{ width: `${Math.min(100, totalEsperado > 0 ? (totalConferido / totalEsperado) * 100 : 0)}%` }}
-            />
+            <div className="w-full bg-muted rounded-full h-2.5">
+              <div
+                className={cn(
+                  "h-2.5 rounded-full transition-all duration-300",
+                  todosConferidos ? "bg-success" : temDivergencia ? "bg-destructive" : "bg-primary"
+                )}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground text-right">{progressPct.toFixed(0)}%</p>
           </div>
 
           {/* Items table */}
@@ -225,9 +310,11 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
                   const status = getItemStatus(item);
                   const StatusIcon = status.icon;
                   const diff = getDiferenca(item);
+                  const isLastScanned = lastScan?.produto_nome === item.nome_snapshot;
                   return (
                     <TableRow key={item.id} className={cn(
-                      diff !== null && diff !== 0 && "bg-destructive/5"
+                      diff !== null && diff !== 0 && "bg-destructive/5",
+                      isLastScanned && "ring-1 ring-primary/30 bg-primary/5"
                     )}>
                       <TableCell className="font-medium">{item.nome_snapshot || 'Produto'}</TableCell>
                       <TableCell className="text-center">{item.qtd}</TableCell>
