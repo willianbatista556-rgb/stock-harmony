@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -38,7 +37,6 @@ interface Props {
 export default function TransferenciaModal({ open, onOpenChange }: Props) {
   const [origemId, setOrigemId] = useState('');
   const [destinoId, setDestinoId] = useState('');
-  const [imediata, setImediata] = useState(true);
   const [observacao, setObservacao] = useState('');
   const [itens, setItens] = useState<ItemForm[]>([{ produto_id: '', qtd: '' }]);
 
@@ -49,7 +47,6 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
   const reset = () => {
     setOrigemId('');
     setDestinoId('');
-    setImediata(true);
     setObservacao('');
     setItens([{ produto_id: '', qtd: '' }]);
   };
@@ -89,7 +86,6 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
       origemId,
       destinoId,
       itens: validItens,
-      imediata,
       observacao: observacao || undefined,
     });
 
@@ -105,12 +101,11 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
         <DialogHeader>
           <DialogTitle>Nova Transferência</DialogTitle>
           <DialogDescription>
-            Transfira produtos entre locais/filiais
+            Cria como pendente. Depois envie para debitar a origem e confirme o recebimento no destino.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Origem e Destino */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Origem *</Label>
@@ -140,18 +135,13 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
             </div>
           </div>
 
-          {/* Modo */}
-          <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Transferência imediata</p>
-              <p className="text-xs text-muted-foreground">
-                {imediata ? 'Estoque será movido agora' : 'Ficará pendente até confirmação'}
-              </p>
-            </div>
-            <Switch checked={imediata} onCheckedChange={setImediata} />
+          {/* Flow info */}
+          <div className="rounded-lg border border-border p-3 bg-muted/30">
+            <p className="text-xs text-muted-foreground">
+              <strong>Fluxo:</strong> Pendente → <span className="text-primary font-medium">Enviar</span> (debita origem) → <span className="text-success font-medium">Receber</span> (credita destino)
+            </p>
           </div>
 
-          {/* Itens */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Produtos</Label>
@@ -199,7 +189,6 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
             ))}
           </div>
 
-          {/* Observação */}
           <div className="space-y-2">
             <Label>Observação</Label>
             <Textarea
@@ -220,7 +209,7 @@ export default function TransferenciaModal({ open, onOpenChange }: Props) {
             disabled={criar.isPending}
             className="gradient-primary text-white"
           >
-            {imediata ? 'Transferir Agora' : 'Criar Pendente'}
+            Criar Pendente
           </Button>
         </DialogFooter>
       </DialogContent>

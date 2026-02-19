@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRightLeft, Check, X, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowRightLeft, Check, X, Clock, CheckCircle2, XCircle, Send, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -13,6 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useTransferencias,
+  useEnviarTransferencia,
   useConfirmarTransferencia,
   useCancelarTransferencia,
 } from '@/hooks/useTransferencias';
@@ -20,14 +21,16 @@ import TransferenciaModal from './TransferenciaModal';
 import { cn } from '@/lib/utils';
 
 const statusConfig = {
-  pendente: { label: 'Pendente', icon: Clock, variant: 'outline' as const, className: 'text-warning border-warning/30 bg-warning/10' },
-  confirmada: { label: 'Confirmada', icon: CheckCircle2, variant: 'outline' as const, className: 'text-success border-success/30 bg-success/10' },
-  cancelada: { label: 'Cancelada', icon: XCircle, variant: 'outline' as const, className: 'text-destructive border-destructive/30 bg-destructive/10' },
+  pendente: { label: 'Pendente', icon: Clock, className: 'text-warning border-warning/30 bg-warning/10' },
+  em_transito: { label: 'Em Trânsito', icon: Truck, className: 'text-primary border-primary/30 bg-primary/10' },
+  confirmada: { label: 'Recebida', icon: CheckCircle2, className: 'text-success border-success/30 bg-success/10' },
+  cancelada: { label: 'Cancelada', icon: XCircle, className: 'text-destructive border-destructive/30 bg-destructive/10' },
 };
 
 export default function TransferenciasTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const { data: transferencias, isLoading } = useTransferencias();
+  const enviar = useEnviarTransferencia();
   const confirmar = useConfirmarTransferencia();
   const cancelar = useCancelarTransferencia();
 
@@ -84,7 +87,7 @@ export default function TransferenciasTab() {
                 return (
                   <TableRow key={t.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell>
-                      <Badge variant={config.variant} className={cn("gap-1", config.className)}>
+                      <Badge variant="outline" className={cn("gap-1", config.className)}>
                         <StatusIcon className="w-3 h-3" />
                         {config.label}
                       </Badge>
@@ -114,30 +117,56 @@ export default function TransferenciasTab() {
                       </p>
                     </TableCell>
                     <TableCell className="text-right">
-                      {t.status === 'pendente' && (
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => confirmar.mutate(t.id)}
-                            disabled={confirmar.isPending}
-                            className="text-success hover:text-success hover:bg-success/10 gap-1"
-                          >
-                            <Check className="w-3.5 h-3.5" />
-                            Confirmar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => cancelar.mutate(t.id)}
-                            disabled={cancelar.isPending}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                            Cancelar
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex gap-1 justify-end">
+                        {/* Pendente → Enviar ou Cancelar */}
+                        {t.status === 'pendente' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => enviar.mutate(t.id)}
+                              disabled={enviar.isPending}
+                              className="text-primary hover:text-primary hover:bg-primary/10 gap-1"
+                            >
+                              <Send className="w-3.5 h-3.5" />
+                              Enviar
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => cancelar.mutate(t.id)}
+                              disabled={cancelar.isPending}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        )}
+                        {/* Em Trânsito → Confirmar Recebimento ou Cancelar */}
+                        {t.status === 'em_transito' && (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => confirmar.mutate(t.id)}
+                              disabled={confirmar.isPending}
+                              className="text-success hover:text-success hover:bg-success/10 gap-1"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              Receber
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => cancelar.mutate(t.id)}
+                              disabled={cancelar.isPending}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
