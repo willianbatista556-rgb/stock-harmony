@@ -31,6 +31,7 @@ export function useFinalizarVenda() {
         p_caixa_id: caixaId || null,
         p_cliente_id: customer?.id || null,
         p_deposito_id: depositoId,
+        p_local_id: depositoId,
         p_subtotal: totalBruto,
         p_desconto: descontoGeral,
         p_total: total,
