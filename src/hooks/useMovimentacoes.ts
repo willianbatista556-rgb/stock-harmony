@@ -82,7 +82,7 @@ export function useCreateMovimentacao() {
 
       if (movError) throw movError;
 
-      // Update estoque
+      // Update legacy estoque table
       const { data: estoqueExistente } = await supabase
         .from('estoque')
         .select('id, qtd')
@@ -112,6 +112,35 @@ export function useCreateMovimentacao() {
           });
 
         if (insertError) throw insertError;
+      }
+
+      // Sync estoque_saldos (new table)
+      const { data: saldoExistente } = await supabase
+        .from('estoque_saldos')
+        .select('id, saldo')
+        .eq('local_id', data.deposito_id)
+        .eq('produto_id', data.produto_id)
+        .single();
+
+      if (saldoExistente) {
+        const { error: saldoErr } = await supabase
+          .from('estoque_saldos')
+          .update({
+            saldo: (saldoExistente.saldo || 0) + qtdFinal,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', saldoExistente.id);
+        if (saldoErr) throw saldoErr;
+      } else {
+        const { error: saldoInsErr } = await supabase
+          .from('estoque_saldos')
+          .insert({
+            empresa_id: profile.empresa_id,
+            local_id: data.deposito_id,
+            produto_id: data.produto_id,
+            saldo: qtdFinal,
+          });
+        if (saldoInsErr) throw saldoInsErr;
       }
 
       return movimentacao;
