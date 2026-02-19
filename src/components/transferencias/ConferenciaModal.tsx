@@ -113,7 +113,7 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
   };
 
   const handleConfirmar = () => {
-    confirmar.mutate(transferencia.id, {
+    confirmar.mutate({ id: transferencia.id, justificativa: justificativa || undefined }, {
       onSuccess: () => onOpenChange(false),
     });
   };

@@ -1361,9 +1361,11 @@ export type Database = {
           destino_id: string
           empresa_id: string
           id: string
+          justificativa_divergencia: string | null
           observacao: string | null
           origem_id: string
           status: string
+          tem_divergencia: boolean
           usuario_id: string
         }
         Insert: {
@@ -1373,9 +1375,11 @@ export type Database = {
           destino_id: string
           empresa_id: string
           id?: string
+          justificativa_divergencia?: string | null
           observacao?: string | null
           origem_id: string
           status?: string
+          tem_divergencia?: boolean
           usuario_id: string
         }
         Update: {
@@ -1385,9 +1389,11 @@ export type Database = {
           destino_id?: string
           empresa_id?: string
           id?: string
+          justificativa_divergencia?: string | null
           observacao?: string | null
           origem_id?: string
           status?: string
+          tem_divergencia?: boolean
           usuario_id?: string
         }
         Relationships: [
@@ -1831,6 +1837,14 @@ export type Database = {
         | { Args: { p_transferencia_id: string }; Returns: undefined }
         | {
             Args: { p_local_id?: string; p_transferencia_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_justificativa?: string
+              p_local_id?: string
+              p_transferencia_id: string
+            }
             Returns: undefined
           }
       transferencia_criar: {

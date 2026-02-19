@@ -21,7 +21,7 @@ export interface Transferencia {
 
 export interface TransferenciaItem {
   id: string;
-  transferencia_id: string;
+  transferencia_id?: string;
   produto_id: string;
   qtd: number;
   qtd_conferida: number;
@@ -138,8 +138,11 @@ export function useConfirmarTransferencia() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.rpc('transferencia_confirmar', { p_transferencia_id: id });
+    mutationFn: async ({ id, justificativa }: { id: string; justificativa?: string }) => {
+      const { error } = await supabase.rpc('transferencia_confirmar', {
+        p_transferencia_id: id,
+        p_justificativa: justificativa || null,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
