@@ -241,6 +241,7 @@ export default function PDV() {
       pagamentos: pags,
       descontoGeral,
       depositoId,
+      localId: state.localId!,
       customer: state.customer,
       caixaId: caixaAberto?.id || null,
       subtotal: subtotalBruto,

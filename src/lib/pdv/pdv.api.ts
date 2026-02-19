@@ -10,6 +10,7 @@ interface FinalizarVendaParams {
   pagamentos: Pagamento[];
   descontoGeral: number;
   depositoId: string;
+  localId: string;
   customer?: PDVCustomer | null;
   caixaId?: string | null;
   subtotal?: number;
@@ -20,7 +21,7 @@ export function useFinalizarVenda() {
   const { profile } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ items, pagamentos, descontoGeral, depositoId, customer, caixaId, subtotal }: FinalizarVendaParams) => {
+    mutationFn: async ({ items, pagamentos, descontoGeral, depositoId, localId, customer, caixaId, subtotal }: FinalizarVendaParams) => {
       if (!profile?.empresa_id) throw new Error('Usuário não autenticado');
 
       const totalBruto = subtotal ?? items.reduce((sum, item) => sum + item.subtotal, 0);
@@ -31,7 +32,7 @@ export function useFinalizarVenda() {
         p_caixa_id: caixaId || null,
         p_cliente_id: customer?.id || null,
         p_deposito_id: depositoId,
-        p_local_id: depositoId,
+        p_local_id: localId,
         p_subtotal: totalBruto,
         p_desconto: descontoGeral,
         p_total: total,
