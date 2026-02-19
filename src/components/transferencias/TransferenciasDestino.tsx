@@ -1,4 +1,5 @@
-import { ArrowRightLeft, Check, X, Clock, PackageCheck, CheckCircle2, XCircle, Truck } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRightLeft, Check, X, Clock, PackageCheck, CheckCircle2, XCircle, Truck, ScanBarcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -8,13 +9,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   useTransferencias,
   useReceberTransferencia,
-  useConfirmarTransferencia,
   useCancelarTransferencia,
+  type Transferencia,
 } from '@/hooks/useTransferencias';
 import { cn } from '@/lib/utils';
+import ConferenciaModal from './ConferenciaModal';
 
 interface Props {
-  localId?: string; // terminal.deposito_id to filter destination
+  localId?: string;
 }
 
 const statusConfig = {
@@ -27,14 +29,18 @@ const statusConfig = {
 export default function TransferenciasDestino({ localId }: Props) {
   const { data: transferencias, isLoading } = useTransferencias();
   const receber = useReceberTransferencia();
-  const confirmar = useConfirmarTransferencia();
   const cancelar = useCancelarTransferencia();
+  const [conferenciaTransf, setConferenciaTransf] = useState<Transferencia | null>(null);
 
-  // Destination sees transfers where destino_id matches local and status is actionable
   const filtered = transferencias?.filter(t => {
     if (localId && t.destino_id !== localId) return false;
     return ['pendente_envio', 'em_recebimento'].includes(t.status);
   }) || [];
+
+  // Keep modal data fresh
+  const modalTransf = conferenciaTransf
+    ? transferencias?.find(t => t.id === conferenciaTransf.id) || conferenciaTransf
+    : null;
 
   return (
     <div className="space-y-4">
@@ -138,9 +144,9 @@ export default function TransferenciasDestino({ localId }: Props) {
                         {t.status === 'em_recebimento' && (
                           <>
                             <Button size="sm" variant="ghost"
-                              onClick={() => confirmar.mutate(t.id)} disabled={confirmar.isPending}
-                              className="text-success hover:text-success hover:bg-success/10 gap-1">
-                              <Check className="w-3.5 h-3.5" /> Confirmar
+                              onClick={() => setConferenciaTransf(t)}
+                              className="text-primary hover:text-primary hover:bg-primary/10 gap-1">
+                              <ScanBarcode className="w-3.5 h-3.5" /> Conferir
                             </Button>
                             <Button size="sm" variant="ghost"
                               onClick={() => cancelar.mutate(t.id)} disabled={cancelar.isPending}
@@ -158,6 +164,14 @@ export default function TransferenciasDestino({ localId }: Props) {
           </TableBody>
         </Table>
       </div>
+
+      {modalTransf && (
+        <ConferenciaModal
+          transferencia={modalTransf}
+          open={!!conferenciaTransf}
+          onOpenChange={(open) => !open && setConferenciaTransf(null)}
+        />
+      )}
     </div>
   );
 }

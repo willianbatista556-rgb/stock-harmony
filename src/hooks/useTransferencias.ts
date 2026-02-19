@@ -24,6 +24,7 @@ export interface TransferenciaItem {
   transferencia_id: string;
   produto_id: string;
   qtd: number;
+  qtd_conferida: number;
   nome_snapshot: string | null;
 }
 
@@ -41,7 +42,7 @@ export function useTransferencias() {
           *,
           origem:depositos!transferencias_origem_id_fkey(nome),
           destino:depositos!transferencias_destino_id_fkey(nome),
-          transferencia_itens(id, produto_id, qtd, nome_snapshot)
+          transferencia_itens(id, produto_id, qtd, qtd_conferida, nome_snapshot)
         `)
         .eq('empresa_id', profile.empresa_id)
         .order('criado_em', { ascending: false })
