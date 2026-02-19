@@ -10,7 +10,7 @@ export interface Transferencia {
   destino_id: string;
   usuario_id: string;
   confirmado_por: string | null;
-  status: 'pendente' | 'confirmada' | 'cancelada';
+  status: 'pendente' | 'em_transito' | 'confirmada' | 'cancelada';
   observacao: string | null;
   criado_em: string;
   confirmado_em: string | null;
@@ -58,7 +58,6 @@ interface CriarTransferenciaParams {
   origemId: string;
   destinoId: string;
   itens: { produto_id: string; qtd: number }[];
-  imediata: boolean;
   observacao?: string;
 }
 
@@ -67,7 +66,7 @@ export function useCriarTransferencia() {
   const { profile } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ origemId, destinoId, itens, imediata, observacao }: CriarTransferenciaParams) => {
+    mutationFn: async ({ origemId, destinoId, itens, observacao }: CriarTransferenciaParams) => {
       if (!profile?.empresa_id) throw new Error('Empresa não encontrada');
 
       const { data, error } = await supabase.rpc('transferencia_criar', {
@@ -75,22 +74,41 @@ export function useCriarTransferencia() {
         p_origem_id: origemId,
         p_destino_id: destinoId,
         p_itens: itens,
-        p_imediata: imediata,
         p_observacao: observacao || null,
       });
 
       if (error) throw error;
       return data;
     },
-    onSuccess: (_, vars) => {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transferencias'] });
+      toast.success('Transferência criada (pendente)');
+    },
+    onError: (error: Error) => {
+      toast.error('Erro na transferência: ' + error.message);
+    },
+  });
+}
+
+export function useEnviarTransferencia() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc('transferencia_enviar', {
+        p_transferencia_id: id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transferencias'] });
       queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
       queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      toast.success(vars.imediata ? 'Transferência realizada!' : 'Transferência criada (pendente)');
+      toast.success('Transferência enviada! Estoque debitado da origem.');
     },
     onError: (error: Error) => {
-      toast.error('Erro na transferência: ' + error.message);
+      toast.error('Erro ao enviar: ' + error.message);
     },
   });
 }
@@ -109,7 +127,8 @@ export function useConfirmarTransferencia() {
       queryClient.invalidateQueries({ queryKey: ['transferencias'] });
       queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
       queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
-      toast.success('Transferência confirmada!');
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toast.success('Recebimento confirmado! Estoque creditado no destino.');
     },
     onError: (error: Error) => {
       toast.error('Erro ao confirmar: ' + error.message);
@@ -129,6 +148,9 @@ export function useCancelarTransferencia() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transferencias'] });
+      queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
+      queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Transferência cancelada.');
     },
     onError: (error: Error) => {

@@ -1831,6 +1831,10 @@ export type Database = {
         }
         Returns: string
       }
+      transferencia_enviar: {
+        Args: { p_transferencia_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "Admin" | "Gerente" | "Operador" | "View"
