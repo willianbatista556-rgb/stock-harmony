@@ -148,6 +148,7 @@ export function useCreateMovimentacao() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
       toast.success('Movimentação registrada com sucesso!');
     },
     onError: (error) => {

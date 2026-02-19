@@ -222,6 +222,7 @@ export function useAplicarAjustesInventario() {
       queryClient.invalidateQueries({ queryKey: ['inventarios'] });
       queryClient.invalidateQueries({ queryKey: ['inventario-itens'] });
       queryClient.invalidateQueries({ queryKey: ['estoque'] });
+      queryClient.invalidateQueries({ queryKey: ['estoque-deposito'] });
       queryClient.invalidateQueries({ queryKey: ['movimentacoes'] });
       toast.success('Ajustes aplicados com sucesso!');
     },
