@@ -24,6 +24,7 @@ import Inventario from "./pages/Inventario";
 import InventarioContagem from "./pages/InventarioContagem";
 import InventarioCompleto from "./pages/InventarioCompleto";
 import NotFound from "./pages/NotFound";
+import TransferenciaReceber from "./pages/TransferenciaReceber";
 
 const queryClient = new QueryClient();
 
@@ -147,6 +148,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <Configuracoes />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/estoque/transferencias/receber/:id"
+              element={
+                <AppLayout>
+                  <TransferenciaReceber />
                 </AppLayout>
               }
             />
