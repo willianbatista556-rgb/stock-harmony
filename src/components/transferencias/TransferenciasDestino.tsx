@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowRightLeft, Check, X, Clock, PackageCheck, CheckCircle2, XCircle, Truck, ScanBarcode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ export default function TransferenciasDestino({ localId }: Props) {
   const { data: transferencias, isLoading } = useTransferencias();
   const receber = useReceberTransferencia();
   const cancelar = useCancelarTransferencia();
+  const navigate = useNavigate();
   const [conferenciaTransf, setConferenciaTransf] = useState<Transferencia | null>(null);
 
   const filtered = transferencias?.filter(t => {
@@ -144,7 +146,7 @@ export default function TransferenciasDestino({ localId }: Props) {
                         {t.status === 'em_recebimento' && (
                           <>
                             <Button size="sm" variant="ghost"
-                              onClick={() => setConferenciaTransf(t)}
+                              onClick={() => navigate(`/estoque/transferencias/receber/${t.id}`)}
                               className="text-primary hover:text-primary hover:bg-primary/10 gap-1">
                               <ScanBarcode className="w-3.5 h-3.5" /> Conferir
                             </Button>
