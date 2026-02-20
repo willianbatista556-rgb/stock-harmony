@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Check, RotateCcw, ScanBarcode, AlertTriangle, CheckCircle2, Clock, MinusCircle, PlusCircle, Keyboard } from 'lucide-react';
+import { Check, RotateCcw, ScanBarcode, AlertTriangle, CheckCircle2, Clock, MinusCircle, Keyboard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -23,7 +23,7 @@ interface ScanResult {
   produto_nome: string;
   qtd_esperada: number;
   qtd_conferida: number;
-  status: 'ok' | 'excesso' | 'pendente';
+  status: 'ok' | 'pendente';
 }
 
 export default function ConferenciaModal({ transferencia, open, onOpenChange }: Props) {
@@ -82,8 +82,6 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
 
       if (result.status === 'ok') {
         toast.success(`✓ ${result.produto_nome} — conferido!`);
-      } else if (result.status === 'excesso') {
-        toast.warning(`⚠ ${result.produto_nome} — excesso! (${result.qtd_conferida}/${result.qtd_esperada})`);
       } else {
         toast(`${result.produto_nome} — ${result.qtd_conferida}/${result.qtd_esperada}`);
       }
@@ -159,7 +157,6 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
     const conf = item.qtd_conferida || 0;
     if (conf === 0) return { label: 'Aguardando', icon: Clock, className: 'text-muted-foreground' };
     if (conf === item.qtd) return { label: 'OK', icon: CheckCircle2, className: 'text-success' };
-    if (conf > item.qtd) return { label: 'Excesso', icon: PlusCircle, className: 'text-warning' };
     return { label: 'Falta', icon: MinusCircle, className: 'text-destructive' };
   };
 
@@ -255,12 +252,10 @@ export default function ConferenciaModal({ transferencia, open, onOpenChange }: 
             <div className={cn(
               "rounded-lg border p-3 text-sm animate-in fade-in slide-in-from-top-1 duration-200",
               lastScan.status === 'ok' && "bg-success/10 border-success/30 text-success",
-              lastScan.status === 'excesso' && "bg-warning/10 border-warning/30 text-warning",
               lastScan.status === 'pendente' && "bg-primary/10 border-primary/30 text-primary",
             )}>
               <strong>{lastScan.produto_nome}</strong> — {lastScan.qtd_conferida}/{lastScan.qtd_esperada}
               {lastScan.status === 'ok' && ' ✓'}
-              {lastScan.status === 'excesso' && ' ⚠ EXCESSO'}
             </div>
           )}
 
