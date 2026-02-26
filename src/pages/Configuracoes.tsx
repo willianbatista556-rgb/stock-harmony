@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, ShieldCheck, PackageMinus, AlertTriangle, Loader2, Building2, Save, Printer } from 'lucide-react';
+import { Settings, ShieldCheck, PackageMinus, AlertTriangle, Loader2, Building2, Save, Printer, Crown, Users, Warehouse as WarehouseIcon, Package, Check, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -9,16 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import { useEmpresaConfig, useUpdateEmpresaConfig } from '@/hooks/useEmpresaConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useSubscription } from '@/hooks/useSubscription';
+import { Progress } from '@/components/ui/progress';
 
 export default function Configuracoes() {
   const { userRole, profile } = useAuth();
   const { data: config, isLoading } = useEmpresaConfig();
   const updateConfig = useUpdateEmpresaConfig();
   const queryClient = useQueryClient();
+  const { subscription, limits, usage, isLoading: isLoadingSub } = useSubscription();
 
   // Empresa data
   const { data: empresa, isLoading: isLoadingEmpresa } = useQuery({
@@ -351,6 +355,111 @@ export default function Configuracoes() {
               </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Plan & Subscription card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Crown className="w-5 h-5 text-primary" />
+            <CardTitle className="text-lg">Plano & Assinatura</CardTitle>
+          </div>
+          <CardDescription>
+            Veja seu plano atual, limites e uso.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isLoadingSub ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : subscription && limits && usage ? (
+            <>
+              {/* Current plan */}
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+                  <Crown className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-lg text-foreground">{subscription.plan.nome}</p>
+                  <p className="text-sm text-muted-foreground">{subscription.plan.descricao}</p>
+                </div>
+                {subscription.plan.preco_mensal > 0 && (
+                  <div className="text-right">
+                    <p className="font-bold text-lg text-foreground">
+                      R$ {subscription.plan.preco_mensal.toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">/mês</p>
+                  </div>
+                )}
+                {subscription.plan.preco_mensal === 0 && (
+                  <Badge variant="secondary" className="text-xs">GRÁTIS</Badge>
+                )}
+              </div>
+
+              {/* Usage meters */}
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-foreground">Uso atual</h4>
+                
+                {[
+                  { icon: Users, label: 'Usuários', current: usage.usuarios, max: limits.max_usuarios },
+                  { icon: WarehouseIcon, label: 'Filiais', current: usage.filiais, max: limits.max_filiais },
+                  { icon: Package, label: 'Produtos', current: usage.produtos, max: limits.max_produtos },
+                ].map((item) => {
+                  const pct = Math.min(100, (item.current / item.max) * 100);
+                  const isNearLimit = pct >= 80;
+                  return (
+                    <div key={item.label} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <item.icon className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium">{item.label}</span>
+                        </div>
+                        <span className={cn(
+                          "font-mono text-xs font-bold",
+                          isNearLimit ? "text-warning" : "text-muted-foreground"
+                        )}>
+                          {item.current} / {item.max >= 9999 ? '∞' : item.max}
+                        </span>
+                      </div>
+                      <Progress value={pct} className="h-2" />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Separator />
+
+              {/* Module access */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-foreground">Módulos inclusos</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { key: 'mod_pdv', label: 'PDV' },
+                    { key: 'mod_financeiro', label: 'Financeiro' },
+                    { key: 'mod_inventario', label: 'Inventário' },
+                    { key: 'mod_transferencias', label: 'Transferências' },
+                    { key: 'mod_relatorios', label: 'Relatórios' },
+                    { key: 'mod_dre', label: 'DRE' },
+                  ].map((mod) => {
+                    const enabled = !!(limits as any)[mod.key];
+                    return (
+                      <div key={mod.key} className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
+                        enabled ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+                      )}>
+                        {enabled ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                        <span className="font-medium">{mod.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum plano encontrado.</p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1275,6 +1275,71 @@ export type Database = {
           },
         ]
       }
+      plan_limits: {
+        Row: {
+          chave: string
+          id: string
+          plan_id: string
+          valor: number
+        }
+        Insert: {
+          chave: string
+          id?: string
+          plan_id: string
+          valor?: number
+        }
+        Update: {
+          chave?: string
+          id?: string
+          plan_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_limits_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          ativo: boolean
+          criado_em: string
+          descricao: string | null
+          destaque: boolean
+          id: string
+          nome: string
+          ordem: number
+          preco_anual: number | null
+          preco_mensal: number
+        }
+        Insert: {
+          ativo?: boolean
+          criado_em?: string
+          descricao?: string | null
+          destaque?: boolean
+          id?: string
+          nome: string
+          ordem?: number
+          preco_anual?: number | null
+          preco_mensal?: number
+        }
+        Update: {
+          ativo?: boolean
+          criado_em?: string
+          descricao?: string | null
+          destaque?: boolean
+          id?: string
+          nome?: string
+          ordem?: number
+          preco_anual?: number | null
+          preco_mensal?: number
+        }
+        Relationships: []
+      }
       produtos: {
         Row: {
           ativo: boolean | null
@@ -1381,6 +1446,57 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscriptions: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          empresa_id: string
+          fim: string | null
+          id: string
+          inicio: string
+          plan_id: string
+          status: string
+          stripe_subscription_id: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id: string
+          fim?: string | null
+          id?: string
+          inicio?: string
+          plan_id: string
+          status?: string
+          stripe_subscription_id?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id?: string
+          fim?: string | null
+          id?: string
+          inicio?: string
+          plan_id?: string
+          status?: string
+          stripe_subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: true
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
             referencedColumns: ["id"]
           },
         ]
@@ -1891,6 +2007,8 @@ export type Database = {
         }
         Returns: string
       }
+      get_empresa_limits: { Args: { p_empresa_id: string }; Returns: Json }
+      get_empresa_usage: { Args: { p_empresa_id: string }; Returns: Json }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
