@@ -17,6 +17,7 @@ import {
   Monitor,
   Landmark,
   ClipboardList,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ const menuItems = [
   { icon: Truck, label: 'Fornecedores', path: '/fornecedores' },
   { icon: ShoppingCart, label: 'Compras', path: '/compras' },
   { icon: ClipboardList, label: 'Inventário', path: '/estoque/inventarios' },
+  { icon: BarChart3, label: 'Relatórios', path: '/relatorios' },
 ];
 
 const bottomItems = [
