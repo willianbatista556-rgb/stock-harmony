@@ -18,6 +18,10 @@ import {
   Landmark,
   ClipboardList,
   BarChart3,
+  Receipt,
+  HandCoins,
+  Activity,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,6 +41,10 @@ const menuItems = [
   { icon: ShoppingCart, label: 'Compras', path: '/compras' },
   { icon: ClipboardList, label: 'Inventário', path: '/estoque/inventarios' },
   { icon: BarChart3, label: 'Relatórios', path: '/relatorios' },
+  { icon: Receipt, label: 'Contas a Pagar', path: '/financeiro/contas-pagar' },
+  { icon: HandCoins, label: 'Contas a Receber', path: '/financeiro/contas-receber' },
+  { icon: Activity, label: 'Fluxo de Caixa', path: '/financeiro/fluxo-caixa' },
+  { icon: FileSpreadsheet, label: 'DRE', path: '/financeiro/dre' },
 ];
 
 const bottomItems = [

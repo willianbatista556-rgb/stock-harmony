@@ -27,7 +27,10 @@ import InventarioCompleto from "./pages/InventarioCompleto";
 import NotFound from "./pages/NotFound";
 import TransferenciaReceber from "./pages/TransferenciaReceber";
 import Relatorios from "./pages/Relatorios";
-
+import ContasPagar from "./pages/ContasPagar";
+import ContasReceber from "./pages/ContasReceber";
+import FluxoCaixa from "./pages/FluxoCaixa";
+import DRE from "./pages/DRE";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -170,6 +173,38 @@ const App = () => (
               element={
                 <AppLayout>
                   <Relatorios />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/financeiro/contas-pagar"
+              element={
+                <AppLayout>
+                  <ContasPagar />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/financeiro/contas-receber"
+              element={
+                <AppLayout>
+                  <ContasReceber />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/financeiro/fluxo-caixa"
+              element={
+                <AppLayout>
+                  <FluxoCaixa />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/financeiro/dre"
+              element={
+                <AppLayout>
+                  <DRE />
                 </AppLayout>
               }
             />
