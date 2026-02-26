@@ -20,5 +20,7 @@ export function useEstoquePorDeposito(depositoId: string | undefined) {
       return map;
     },
     enabled: !!depositoId,
+    staleTime: 60 * 1000,           // 1 min — balance freshness with speed
+    refetchOnWindowFocus: false,
   });
 }

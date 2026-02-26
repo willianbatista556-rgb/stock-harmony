@@ -133,11 +133,94 @@ export default function PDV() {
   const subtotalBruto = getSubtotalBruto(state);
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Produto[]>([]);
   const [searchSelectedIndex, setSearchSelectedIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
   const [paymentForm, setPaymentForm] = useState<Pagamento['forma']>('dinheiro');
   const [paymentValue, setPaymentValue] = useState('');
+
+  // ── Pre-index products by EAN/SKU for O(1) barcode lookup ──
+  const { eanIndex, skuIndex, searchLower } = useMemo(() => {
+    const ean = new Map<string, Produto>();
+    const sku = new Map<string, Produto>();
+    const lower = produtos.map(p => ({
+      p,
+      nome: p.nome.toLowerCase(),
+      sku: p.sku?.toLowerCase() ?? '',
+      ean: p.ean?.toLowerCase() ?? '',
+    }));
+    for (const p of produtos) {
+      if (p.ean) ean.set(p.ean, p);
+      if (p.sku) sku.set(p.sku, p);
+    }
+    return { eanIndex: ean, skuIndex: sku, searchLower: lower };
+  }, [produtos]);
+
+  // ── Search results computed via useMemo (no async state) ────
+  const searchResults = useMemo(() => {
+    if (state.mode !== 'search' || !searchQuery.trim()) return [];
+    const q = searchQuery.toLowerCase().trim();
+    const results: Produto[] = [];
+    for (const entry of searchLower) {
+      if (entry.nome.includes(q) || entry.sku.includes(q) || entry.ean.includes(q)) {
+        results.push(entry.p);
+        if (results.length >= 10) break;
+      }
+    }
+    return results;
+  }, [searchQuery, searchLower, state.mode]);
+
+  // ── Stock check helper (UX only, RPC still validates) ────
+  const canAddProduct = useCallback((produto: Produto): boolean => {
+    const bloqueia = state.config?.bloquearSemEstoque ?? true;
+    const permiteNegativo = state.config?.permitirNegativo ?? false;
+
+    if (bloqueia && !permiteNegativo) {
+      const estoque = estoqueMap[produto.id] ?? 0;
+      const inCart = state.items.find(i => i.produto.id === produto.id)?.qtd ?? 0;
+      if (estoque - inCart <= 0) {
+        toast.error(`Produto "${produto.nome}" sem estoque. Venda bloqueada.`);
+        return false;
+      }
+    }
+    return true;
+  }, [state.config, estoqueMap, state.items]);
+
+  // ── Barcode scanner detection (rapid input → instant add) ───
+  const lastKeyTimeRef = useRef(0);
+  const barcodeBufferRef = useRef('');
+
+  const handleSearchChange = useCallback((value: string) => {
+    const now = performance.now();
+    const elapsed = now - lastKeyTimeRef.current;
+    lastKeyTimeRef.current = now;
+
+    // Scanner types very fast (<80ms between chars) and ends with Enter
+    // But we also handle paste (elapsed ~0) and direct EAN match
+    if (elapsed < 80 && value.length > 1) {
+      barcodeBufferRef.current = value;
+    } else {
+      barcodeBufferRef.current = '';
+    }
+
+    setSearchQuery(value);
+
+    // Instant EAN/SKU match — auto-add on exact match
+    const trimmed = value.trim();
+    if (trimmed.length >= 8) {
+      const exactMatch = eanIndex.get(trimmed) || skuIndex.get(trimmed);
+      if (exactMatch) {
+        if (canAddProduct(exactMatch)) {
+          dispatch({ type: 'ADD_ITEM', produto: exactMatch, keepSearchMode: true });
+        }
+        setSearchQuery('');
+        barcodeBufferRef.current = '';
+        setTimeout(() => searchInputRef.current?.focus(), 20);
+        return;
+      }
+    }
+
+    setSearchSelectedIndex(0);
+  }, [eanIndex, skuIndex, canAddProduct]);
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState<{
@@ -165,48 +248,7 @@ export default function PDV() {
   }, []);
 
 
-  // ── Client-side product search ──────────────────────────
-  useEffect(() => {
-    if (state.mode === 'search' && searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const results = produtos.filter(p =>
-        p.nome.toLowerCase().includes(q) ||
-        (p.sku && p.sku.toLowerCase().includes(q)) ||
-        (p.ean && p.ean.toLowerCase().includes(q))
-      ).slice(0, 10);
-      setSearchResults(results);
-      setSearchSelectedIndex(0);
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchQuery, produtos, state.mode]);
-
   // ── Focus management per mode ───────────────────────────
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (state.mode === 'search' || state.mode === 'normal') searchInputRef.current?.focus();
-      else if (state.mode === 'quantity' || state.mode === 'discount') inputRef.current?.focus();
-      else if (state.mode === 'payment') paymentInputRef.current?.focus();
-    }, 50);
-    return () => clearTimeout(t);
-  }, [state.mode]);
-
-  // ── Stock check helper (UX only, RPC still validates) ────
-  const canAddProduct = useCallback((produto: Produto): boolean => {
-    const bloqueia = state.config?.bloquearSemEstoque ?? true;
-    const permiteNegativo = state.config?.permitirNegativo ?? false;
-
-    if (bloqueia && !permiteNegativo) {
-      const estoque = estoqueMap[produto.id] ?? 0;
-      // Check if already in cart — available = stock - qty already in cart
-      const inCart = state.items.find(i => i.produto.id === produto.id)?.qtd ?? 0;
-      if (estoque - inCart <= 0) {
-        toast.error(`Produto "${produto.nome}" sem estoque. Venda bloqueada.`);
-        return false;
-      }
-    }
-    return true;
-  }, [state.config, estoqueMap, state.items]);
 
   // ── Handlers ────────────────────────────────────────────
   const handleAddPayment = useCallback(() => {
@@ -581,7 +623,7 @@ export default function PDV() {
               ref={searchInputRef}
               query={searchQuery}
               onQueryChange={q => {
-                setSearchQuery(q);
+                handleSearchChange(q);
                 if (state.mode !== 'search') dispatch({ type: 'SET_MODE', mode: 'search' });
               }}
               onFocus={() => dispatch({ type: 'SET_MODE', mode: 'search' })}

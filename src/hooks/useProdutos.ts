@@ -38,5 +38,8 @@ export function useProdutos() {
       return data as Produto[];
     },
     enabled: !!profile?.empresa_id,
+    staleTime: 5 * 60 * 1000,      // 5 min — avoid refetch on PDV focus
+    gcTime: 10 * 60 * 1000,         // 10 min gc
+    refetchOnWindowFocus: false,
   });
 }
