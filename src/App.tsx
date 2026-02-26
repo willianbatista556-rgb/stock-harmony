@@ -31,6 +31,7 @@ import ContasPagar from "./pages/ContasPagar";
 import ContasReceber from "./pages/ContasReceber";
 import FluxoCaixa from "./pages/FluxoCaixa";
 import DRE from "./pages/DRE";
+import Auditoria from "./pages/Auditoria";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -205,6 +206,14 @@ const App = () => (
               element={
                 <AppLayout>
                   <DRE />
+                </AppLayout>
+              }
+            />
+            <Route
+              path="/auditoria"
+              element={
+                <AppLayout>
+                  <Auditoria />
                 </AppLayout>
               }
             />

@@ -22,6 +22,7 @@ import {
   HandCoins,
   Activity,
   FileSpreadsheet,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,6 +49,7 @@ const menuItems = [
 ];
 
 const bottomItems = [
+  { icon: Shield, label: 'Auditoria', path: '/auditoria' },
   { icon: Users, label: 'Usuários', path: '/usuarios' },
   { icon: Settings, label: 'Configurações', path: '/configuracoes' },
 ];
