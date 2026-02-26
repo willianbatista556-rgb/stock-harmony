@@ -66,6 +66,59 @@ export type Database = {
           },
         ]
       }
+      audit_log: {
+        Row: {
+          acao: string
+          criado_em: string
+          dados_antes: Json | null
+          dados_depois: Json | null
+          empresa_id: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          registro_id: string | null
+          tabela: string | null
+          user_agent: string | null
+          usuario_id: string | null
+        }
+        Insert: {
+          acao: string
+          criado_em?: string
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          empresa_id: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          registro_id?: string | null
+          tabela?: string | null
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Update: {
+          acao?: string
+          criado_em?: string
+          dados_antes?: Json | null
+          dados_depois?: Json | null
+          empresa_id?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          registro_id?: string | null
+          tabela?: string | null
+          user_agent?: string | null
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       caixa_movimentacoes: {
         Row: {
           caixa_id: string
@@ -1985,6 +2038,20 @@ export type Database = {
       }
     }
     Functions: {
+      audit_login: { Args: never; Returns: undefined }
+      audit_write: {
+        Args: {
+          p_acao: string
+          p_dados_antes?: Json
+          p_dados_depois?: Json
+          p_empresa_id: string
+          p_metadata?: Json
+          p_registro_id?: string
+          p_tabela?: string
+          p_usuario_id: string
+        }
+        Returns: undefined
+      }
       caixa_fechar: {
         Args: {
           p_caixa_id: string

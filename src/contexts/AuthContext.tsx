@@ -68,6 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => {
             fetchProfile(session.user.id);
           }, 0);
+          // Audit login event
+          if (event === 'SIGNED_IN') {
+            supabase.rpc('audit_login').then(() => {});
+          }
         } else {
           setProfile(null);
           setUserRole(null);
