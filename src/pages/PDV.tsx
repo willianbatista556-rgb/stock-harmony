@@ -3,6 +3,7 @@ import { ShoppingCart, Banknote, AlertTriangle, LogOut, User, FileText, Landmark
 import { printReceipt } from '@/lib/print';
 import type { ReceiptData } from '@/lib/print/types';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -251,18 +252,32 @@ export default function PDV() {
   // ── Focus management per mode ───────────────────────────
 
   // ── Handlers ────────────────────────────────────────────
+  const [crediarioParcelas, setCrediarioParcelas] = useState(1);
+
   const handleAddPayment = useCallback(() => {
     const val = parseFloat(paymentValue);
     if (isNaN(val) || val <= 0) { toast.error('Valor inválido'); return; }
+
+    // Crediário requires identified customer
+    if (paymentForm === 'crediario' && (!state.customer || state.customer.nome === 'CLIENTE BALCAO')) {
+      toast.error('Crediário requer cliente identificado. Use F3.');
+      return;
+    }
+
     const troco = paymentForm === 'dinheiro' && val > restante ? val - restante : 0;
-    const pagamento: Pagamento = { forma: paymentForm, valor: val, troco };
+    const pagamento: Pagamento = {
+      forma: paymentForm,
+      valor: val,
+      troco,
+      ...(paymentForm === 'crediario' ? { parcelas: crediarioParcelas } : {}),
+    };
     dispatch({ type: 'ADD_PAGAMENTO', pagamento });
     setPaymentValue('');
 
     if (totalPago + val >= total) {
       handleFinalize([...state.pagamentos, pagamento]);
     }
-  }, [paymentValue, paymentForm, restante, totalPago, total, state.pagamentos]);
+  }, [paymentValue, paymentForm, restante, totalPago, total, state.pagamentos, state.customer, crediarioParcelas]);
 
   const handleFinalize = useCallback(async (allPagamentos?: Pagamento[]) => {
     const pags = allPagamentos || state.pagamentos;
@@ -289,8 +304,37 @@ export default function PDV() {
       subtotal: subtotalBruto,
     });
 
+    // Generate crediário receivables
+    const crediarioPags = pags.filter(p => p.forma === 'crediario');
+    if (crediarioPags.length > 0 && state.customer && profile?.empresa_id && user?.id) {
+      for (const cp of crediarioPags) {
+        const numParcelas = cp.parcelas || 1;
+        const valorParcela = Math.round((cp.valor / numParcelas) * 100) / 100;
+        const hoje = new Date();
+
+        for (let i = 0; i < numParcelas; i++) {
+          const vencimento = new Date(hoje);
+          vencimento.setMonth(vencimento.getMonth() + i + 1);
+          const vencStr = vencimento.toISOString().split('T')[0];
+
+          await supabase.from('contas_receber').insert({
+            empresa_id: profile.empresa_id,
+            usuario_id: user.id,
+            cliente_id: state.customer.id,
+            venda_id: vendaId,
+            descricao: `Crediário - Venda ${String(vendaId).slice(0, 8)}`,
+            valor: valorParcela,
+            vencimento: vencStr,
+            parcela: i + 1,
+            total_parcelas: numParcelas,
+            status: 'pendente',
+          } as any);
+        }
+      }
+    }
+
     const formaMap: Record<string, string> = {
-      dinheiro: 'Dinheiro', credito: 'Credito', debito: 'Debito', pix: 'Pix',
+      dinheiro: 'Dinheiro', credito: 'Credito', debito: 'Debito', pix: 'Pix', crediario: 'Crediário',
     };
 
     const receipt: ReceiptData = {
@@ -683,6 +727,7 @@ export default function PDV() {
                 restante={restante}
                 onFinalize={() => handleFinalize()}
                 isFinalizing={finalizarVenda.isPending}
+                hasIdentifiedCustomer={!!state.customer && state.customer.nome !== 'CLIENTE BALCAO'}
               />
             )}
 

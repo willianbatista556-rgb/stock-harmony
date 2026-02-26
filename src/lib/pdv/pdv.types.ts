@@ -11,9 +11,10 @@ export interface PDVItem {
 }
 
 export interface Pagamento {
-  forma: 'dinheiro' | 'credito' | 'debito' | 'pix';
+  forma: 'dinheiro' | 'credito' | 'debito' | 'pix' | 'crediario';
   valor: number;
   troco?: number;
+  parcelas?: number;
 }
 
 export interface PDVCustomer {
