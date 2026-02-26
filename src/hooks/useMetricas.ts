@@ -144,3 +144,88 @@ export function useFaturamentoTotal() {
     enabled: !!profile?.empresa_id,
   });
 }
+
+export function useFaturamentoHoje() {
+  const { profile } = useAuth();
+  const today = new Date().toISOString().split('T')[0];
+
+  return useQuery({
+    queryKey: ['faturamento-hoje', profile?.empresa_id, today],
+    queryFn: async () => {
+      if (!profile?.empresa_id) return { total: 0, num_vendas: 0 };
+      const { data, error } = await supabase
+        .from('vendas')
+        .select('total')
+        .eq('empresa_id', profile.empresa_id)
+        .eq('status', 'finalizada')
+        .gte('data', `${today}T00:00:00`)
+        .lte('data', `${today}T23:59:59`);
+      if (error) throw error;
+      const total = data?.reduce((acc, v) => acc + Number(v.total || 0), 0) || 0;
+      const num_vendas = data?.length || 0;
+      return { total, num_vendas };
+    },
+    enabled: !!profile?.empresa_id,
+  });
+}
+
+export function useProdutoCampeao() {
+  const { profile } = useAuth();
+  return useQuery({
+    queryKey: ['produto-campeao', profile?.empresa_id],
+    queryFn: async () => {
+      if (!profile?.empresa_id) return null;
+      const { data, error } = await supabase
+        .from('vw_curva_abc' as any)
+        .select('*')
+        .eq('empresa_id', profile.empresa_id)
+        .order('receita_total', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as CurvaABC | null;
+    },
+    enabled: !!profile?.empresa_id,
+  });
+}
+
+export function useEstoqueParado(limit = 5) {
+  const { profile } = useAuth();
+  return useQuery({
+    queryKey: ['estoque-parado', profile?.empresa_id, limit],
+    queryFn: async () => {
+      if (!profile?.empresa_id) return [];
+      const { data, error } = await supabase
+        .from('vw_giro_estoque' as any)
+        .select('*')
+        .eq('empresa_id', profile.empresa_id)
+        .eq('classificacao_giro', 'parado')
+        .order('estoque_atual', { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data || []) as unknown as GiroEstoque[];
+    },
+    enabled: !!profile?.empresa_id,
+  });
+}
+
+export function useMargemMedia() {
+  const { profile } = useAuth();
+  return useQuery({
+    queryKey: ['margem-media', profile?.empresa_id],
+    queryFn: async () => {
+      if (!profile?.empresa_id) return { margem: 0, lucro: 0 };
+      const { data, error } = await supabase
+        .from('vw_margem_produto' as any)
+        .select('margem_percentual, lucro_bruto_30d')
+        .eq('empresa_id', profile.empresa_id);
+      if (error) throw error;
+      const items = (data || []) as unknown as { margem_percentual: number; lucro_bruto_30d: number }[];
+      if (items.length === 0) return { margem: 0, lucro: 0 };
+      const totalLucro = items.reduce((a, i) => a + Number(i.lucro_bruto_30d || 0), 0);
+      const avgMargem = items.reduce((a, i) => a + Number(i.margem_percentual || 0), 0) / items.length;
+      return { margem: Math.round(avgMargem * 10) / 10, lucro: totalLucro };
+    },
+    enabled: !!profile?.empresa_id,
+  });
+}
