@@ -24,6 +24,7 @@ import {
   FileSpreadsheet,
   Shield,
   Lock,
+  BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,6 +56,7 @@ const menuItems: MenuItem[] = [
   { icon: Receipt, label: 'Contas a Pagar', path: '/financeiro/contas-pagar', module: 'financeiro' },
   { icon: HandCoins, label: 'Contas a Receber', path: '/financeiro/contas-receber', module: 'financeiro' },
   { icon: Activity, label: 'Fluxo de Caixa', path: '/financeiro/fluxo-caixa', module: 'financeiro' },
+  { icon: BookOpen, label: 'Crediário', path: '/financeiro/crediario', module: 'financeiro' },
   { icon: FileSpreadsheet, label: 'DRE', path: '/financeiro/dre', module: 'dre' },
 ];
 

@@ -1,5 +1,5 @@
-import { memo, forwardRef } from 'react';
-import { Banknote, CreditCard, QrCode, X } from 'lucide-react';
+import { memo, forwardRef, useState } from 'react';
+import { Banknote, CreditCard, QrCode, X, BookOpen } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,11 +12,12 @@ const formaConfig = {
   credito: { label: 'Crédito', icon: CreditCard },
   debito: { label: 'Débito', icon: CreditCard },
   pix: { label: 'Pix', icon: QrCode },
+  crediario: { label: 'Crediário', icon: BookOpen },
 } as const;
 
 interface PDVPaymentPanelProps {
-  paymentForm: 'dinheiro' | 'credito' | 'debito' | 'pix';
-  onPaymentFormChange: (forma: 'dinheiro' | 'credito' | 'debito' | 'pix') => void;
+  paymentForm: Pagamento['forma'];
+  onPaymentFormChange: (forma: Pagamento['forma']) => void;
   paymentValue: string;
   onPaymentValueChange: (val: string) => void;
   onAddPayment: () => void;
@@ -25,6 +26,7 @@ interface PDVPaymentPanelProps {
   restante: number;
   onFinalize: () => void;
   isFinalizing: boolean;
+  hasIdentifiedCustomer?: boolean;
 }
 
 export const PDVPaymentPanel = memo(forwardRef<HTMLInputElement, PDVPaymentPanelProps>(
@@ -32,23 +34,35 @@ export const PDVPaymentPanel = memo(forwardRef<HTMLInputElement, PDVPaymentPanel
     paymentForm, onPaymentFormChange,
     paymentValue, onPaymentValueChange,
     onAddPayment, pagamentos, onRemovePagamento,
-    restante, onFinalize, isFinalizing,
+    restante, onFinalize, isFinalizing, hasIdentifiedCustomer,
   }, ref) {
+    const [parcelas, setParcelas] = useState(1);
+
+    const handleFormChange = (forma: Pagamento['forma']) => {
+      if (forma === 'crediario' && !hasIdentifiedCustomer) return;
+      onPaymentFormChange(forma);
+      if (forma !== 'crediario') setParcelas(1);
+    };
+
     return (
       <div className="bg-card rounded-xl border-2 border-success p-4 shadow-card animate-scale-in space-y-3">
         <h3 className="font-display font-bold text-foreground">Pagamento</h3>
 
         {/* Payment method selector */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-5 gap-1.5">
           {(Object.keys(formaConfig) as Array<keyof typeof formaConfig>).map(forma => {
             const cfg = formaConfig[forma];
             const Icon = cfg.icon;
+            const disabled = forma === 'crediario' && !hasIdentifiedCustomer;
             return (
               <button
                 key={forma}
-                onClick={() => onPaymentFormChange(forma)}
+                onClick={() => handleFormChange(forma)}
+                disabled={disabled}
+                title={disabled ? 'Selecione um cliente identificado (F3)' : cfg.label}
                 className={cn(
                   'flex flex-col items-center gap-1 p-2 rounded-lg border transition-all text-xs font-medium',
+                  disabled && 'opacity-40 cursor-not-allowed',
                   paymentForm === forma
                     ? 'border-primary bg-primary/10 text-primary'
                     : 'border-border hover:border-primary/50 text-muted-foreground'
@@ -60,6 +74,29 @@ export const PDVPaymentPanel = memo(forwardRef<HTMLInputElement, PDVPaymentPanel
             );
           })}
         </div>
+
+        {/* Parcelas for crediário */}
+        {paymentForm === 'crediario' && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Parcelas:</span>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5, 6].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setParcelas(n)}
+                  className={cn(
+                    'w-8 h-8 rounded-md border text-xs font-bold transition-all',
+                    parcelas === n
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/50'
+                  )}
+                >
+                  {n}x
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Value input */}
         <div className="flex gap-2">
@@ -92,6 +129,7 @@ export const PDVPaymentPanel = memo(forwardRef<HTMLInputElement, PDVPaymentPanel
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-xs">
                     {formaConfig[pag.forma].label}
+                    {pag.parcelas && pag.parcelas > 1 ? ` ${pag.parcelas}x` : ''}
                   </Badge>
                   <span className="font-mono tabular-nums font-medium">{formatCurrency(pag.valor)}</span>
                   {pag.troco && pag.troco > 0 ? (
