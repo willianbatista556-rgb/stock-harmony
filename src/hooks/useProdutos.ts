@@ -17,6 +17,9 @@ export interface Produto {
   categoria_id: string | null;
   empresa_id: string;
   criado_em: string | null;
+  tamanho: string | null;
+  cor: string | null;
+  comissao_percentual: number | null;
 }
 
 export function useProdutos() {

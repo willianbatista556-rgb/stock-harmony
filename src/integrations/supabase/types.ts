@@ -1624,10 +1624,182 @@ export type Database = {
         }
         Relationships: []
       }
+      produto_lotes: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          empresa_id: string
+          id: string
+          local_id: string
+          lote: string
+          produto_id: string
+          quantidade: number
+          validade: string | null
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id: string
+          id?: string
+          local_id: string
+          lote: string
+          produto_id: string
+          quantidade?: number
+          validade?: string | null
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          empresa_id?: string
+          id?: string
+          local_id?: string
+          lote?: string
+          produto_id?: string
+          quantidade?: number
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_lotes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "depositos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "vw_estoque_por_deposito"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_local_id_fkey"
+            columns: ["local_id"]
+            isOneToOne: false
+            referencedRelation: "vw_faturamento_filial"
+            referencedColumns: ["deposito_id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_curva_abc"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_giro_estoque"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_margem_produto"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "produto_lotes_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
+      produto_precos: {
+        Row: {
+          criado_em: string
+          empresa_id: string
+          id: string
+          nome: string
+          produto_id: string
+          valor: number
+        }
+        Insert: {
+          criado_em?: string
+          empresa_id: string
+          id?: string
+          nome: string
+          produto_id: string
+          valor?: number
+        }
+        Update: {
+          criado_em?: string
+          empresa_id?: string
+          id?: string
+          nome?: string
+          produto_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produto_precos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_precos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produto_precos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_curva_abc"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "produto_precos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_giro_estoque"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "produto_precos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_margem_produto"
+            referencedColumns: ["produto_id"]
+          },
+          {
+            foreignKeyName: "produto_precos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "vw_previsao_ruptura"
+            referencedColumns: ["produto_id"]
+          },
+        ]
+      }
       produtos: {
         Row: {
           ativo: boolean | null
           categoria_id: string | null
+          comissao_percentual: number | null
+          cor: string | null
           criado_em: string | null
           custo_medio: number | null
           ean: string | null
@@ -1639,11 +1811,14 @@ export type Database = {
           nome: string
           preco_venda: number | null
           sku: string | null
+          tamanho: string | null
           unidade: string | null
         }
         Insert: {
           ativo?: boolean | null
           categoria_id?: string | null
+          comissao_percentual?: number | null
+          cor?: string | null
           criado_em?: string | null
           custo_medio?: number | null
           ean?: string | null
@@ -1655,11 +1830,14 @@ export type Database = {
           nome: string
           preco_venda?: number | null
           sku?: string | null
+          tamanho?: string | null
           unidade?: string | null
         }
         Update: {
           ativo?: boolean | null
           categoria_id?: string | null
+          comissao_percentual?: number | null
+          cor?: string | null
           criado_em?: string | null
           custo_medio?: number | null
           ean?: string | null
@@ -1671,6 +1849,7 @@ export type Database = {
           nome?: string
           preco_venda?: number | null
           sku?: string | null
+          tamanho?: string | null
           unidade?: string | null
         }
         Relationships: [

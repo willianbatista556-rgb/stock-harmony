@@ -18,29 +18,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-
-interface Produto {
-  id: string;
-  sku: string;
-  nome: string;
-  categoria: string;
-  marca: string;
-  estoque: number;
-  estoqueMin: number;
-  preco: number;
-  ativo: boolean;
-}
-
-const mockProdutos: Produto[] = [
-  { id: '1', sku: 'CX001', nome: 'Caixa de Papelão 40x30x20', categoria: 'Embalagens', marca: 'PackPro', estoque: 500, estoqueMin: 100, preco: 4.50, ativo: true },
-  { id: '2', sku: 'FT001', nome: 'Fita Adesiva Transparente 45mm', categoria: 'Fitas', marca: 'Adere', estoque: 80, estoqueMin: 50, preco: 8.90, ativo: true },
-  { id: '3', sku: 'ET001', nome: 'Etiqueta Adesiva A4', categoria: 'Etiquetas', marca: 'Pimaco', estoque: 200, estoqueMin: 100, preco: 35.00, ativo: true },
-  { id: '4', sku: 'SP001', nome: 'Saco Plástico 20x30cm', categoria: 'Embalagens', marca: 'PlastMax', estoque: 1500, estoqueMin: 500, preco: 0.15, ativo: true },
-  { id: '5', sku: 'PA001', nome: 'Papel A4 Sulfite 75g', categoria: 'Papelaria', marca: 'Chamex', estoque: 25, estoqueMin: 50, preco: 28.90, ativo: true },
-  { id: '6', sku: 'CX002', nome: 'Caixa de Papelão 30x20x15', categoria: 'Embalagens', marca: 'PackPro', estoque: 300, estoqueMin: 100, preco: 3.20, ativo: false },
-  { id: '7', sku: 'FT002', nome: 'Fita Adesiva Marrom 48mm', categoria: 'Fitas', marca: 'Adere', estoque: 120, estoqueMin: 30, preco: 7.50, ativo: true },
-  { id: '8', sku: 'PL001', nome: 'Plástico Bolha 1.20m', categoria: 'Proteção', marca: 'PlastMax', estoque: 45, estoqueMin: 20, preco: 12.00, ativo: true },
-];
+import { useProdutos, type Produto } from '@/hooks/useProdutos';
 
 function getStockStatus(estoque: number, estoqueMin: number) {
   const ratio = estoque / estoqueMin;
@@ -51,11 +29,20 @@ function getStockStatus(estoque: number, estoqueMin: number) {
 
 export default function Produtos() {
   const [search, setSearch] = useState('');
+  const { data: produtos = [], isLoading } = useProdutos();
 
-  const filteredProdutos = mockProdutos.filter((p) =>
+  const filteredProdutos = produtos.filter((p) =>
     p.nome.toLowerCase().includes(search.toLowerCase()) ||
-    p.sku.toLowerCase().includes(search.toLowerCase())
+    (p.sku || '').toLowerCase().includes(search.toLowerCase()) ||
+    (p.ean || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const formatGrade = (p: Produto) => {
+    const parts: string[] = [];
+    if (p.tamanho) parts.push(p.tamanho);
+    if (p.cor) parts.push(p.cor);
+    return parts.length > 0 ? parts.join(' / ') : null;
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -78,7 +65,7 @@ export default function Produtos() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome ou SKU..."
+            placeholder="Buscar por nome, SKU ou EAN..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -96,17 +83,28 @@ export default function Produtos() {
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="font-semibold">Produto</TableHead>
-              <TableHead className="font-semibold">Categoria</TableHead>
-              <TableHead className="font-semibold">Estoque</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
+              <TableHead className="font-semibold">Unidade</TableHead>
+              <TableHead className="font-semibold">Grade</TableHead>
               <TableHead className="font-semibold text-right">Preço</TableHead>
+              <TableHead className="font-semibold text-right">Comissão</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredProdutos.map((produto, index) => {
-              const status = getStockStatus(produto.estoque, produto.estoqueMin);
-
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  Carregando...
+                </TableCell>
+              </TableRow>
+            ) : filteredProdutos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  Nenhum produto encontrado
+                </TableCell>
+              </TableRow>
+            ) : filteredProdutos.map((produto, index) => {
+              const grade = formatGrade(produto);
               return (
                 <TableRow
                   key={produto.id}
@@ -121,34 +119,33 @@ export default function Produtos() {
                       <div>
                         <p className="font-medium text-card-foreground">{produto.nome}</p>
                         <p className="text-sm text-muted-foreground">
-                          SKU: {produto.sku} • {produto.marca}
+                          {produto.sku && `SKU: ${produto.sku}`}
+                          {produto.sku && produto.marca && ' • '}
+                          {produto.marca}
+                          {produto.ean && ` • EAN: ${produto.ean}`}
                         </p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{produto.categoria}</Badge>
+                    <Badge variant="secondary">{produto.unidade || 'UN'}</Badge>
                   </TableCell>
                   <TableCell>
-                    <div>
-                      <p className="font-semibold tabular-nums">{produto.estoque}</p>
-                      <p className="text-xs text-muted-foreground">Mín: {produto.estoqueMin}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        status.variant === 'destructive' && 'border-destructive text-destructive bg-destructive/10',
-                        status.variant === 'warning' && 'border-warning text-warning bg-warning/10',
-                        status.variant === 'success' && 'border-success text-success bg-success/10'
-                      )}
-                    >
-                      {status.label}
-                    </Badge>
+                    {grade ? (
+                      <span className="text-sm text-foreground">{grade}</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right font-semibold tabular-nums">
-                    {produto.preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {(produto.preco_venda ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {produto.comissao_percentual != null ? (
+                      <span className="text-sm">{produto.comissao_percentual}%</span>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -183,7 +180,7 @@ export default function Produtos() {
       {/* Pagination placeholder */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Mostrando {filteredProdutos.length} de {mockProdutos.length} produtos
+          Mostrando {filteredProdutos.length} de {produtos.length} produtos
         </p>
       </div>
     </div>
