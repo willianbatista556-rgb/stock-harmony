@@ -390,6 +390,139 @@ export type Database = {
           },
         ]
       }
+      contas_pagar: {
+        Row: {
+          categoria: string | null
+          criado_em: string
+          descricao: string
+          empresa_id: string
+          fornecedor_id: string | null
+          id: string
+          observacao: string | null
+          pago_em: string | null
+          status: string
+          usuario_id: string
+          valor: number
+          vencimento: string
+        }
+        Insert: {
+          categoria?: string | null
+          criado_em?: string
+          descricao: string
+          empresa_id: string
+          fornecedor_id?: string | null
+          id?: string
+          observacao?: string | null
+          pago_em?: string | null
+          status?: string
+          usuario_id: string
+          valor: number
+          vencimento: string
+        }
+        Update: {
+          categoria?: string | null
+          criado_em?: string
+          descricao?: string
+          empresa_id?: string
+          fornecedor_id?: string | null
+          id?: string
+          observacao?: string | null
+          pago_em?: string | null
+          status?: string
+          usuario_id?: string
+          valor?: number
+          vencimento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contas_pagar_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_pagar_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fornecedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contas_receber: {
+        Row: {
+          cliente_id: string | null
+          criado_em: string
+          descricao: string
+          empresa_id: string
+          id: string
+          observacao: string | null
+          parcela: number
+          recebido_em: string | null
+          status: string
+          total_parcelas: number
+          usuario_id: string
+          valor: number
+          vencimento: string
+          venda_id: string | null
+        }
+        Insert: {
+          cliente_id?: string | null
+          criado_em?: string
+          descricao: string
+          empresa_id: string
+          id?: string
+          observacao?: string | null
+          parcela?: number
+          recebido_em?: string | null
+          status?: string
+          total_parcelas?: number
+          usuario_id: string
+          valor: number
+          vencimento: string
+          venda_id?: string | null
+        }
+        Update: {
+          cliente_id?: string | null
+          criado_em?: string
+          descricao?: string
+          empresa_id?: string
+          id?: string
+          observacao?: string | null
+          parcela?: number
+          recebido_em?: string | null
+          status?: string
+          total_parcelas?: number
+          usuario_id?: string
+          valor?: number
+          vencimento?: string
+          venda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contas_receber_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contas_receber_venda_id_fkey"
+            columns: ["venda_id"]
+            isOneToOne: false
+            referencedRelation: "vendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       depositos: {
         Row: {
           criado_em: string | null
