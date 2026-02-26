@@ -29,6 +29,9 @@ export interface PlanLimits {
   mod_transferencias: boolean;
   mod_relatorios: boolean;
   mod_dre: boolean;
+  mod_bi: boolean;
+  mod_api: boolean;
+  mod_integracoes: boolean;
   [key: string]: number | boolean;
 }
 
@@ -81,6 +84,9 @@ export function useSubscription() {
         mod_transferencias: (raw.mod_transferencias ?? 0) === 1,
         mod_relatorios: (raw.mod_relatorios ?? 0) === 1,
         mod_dre: (raw.mod_dre ?? 0) === 1,
+        mod_bi: (raw.mod_bi ?? 0) === 1,
+        mod_api: (raw.mod_api ?? 0) === 1,
+        mod_integracoes: (raw.mod_integracoes ?? 0) === 1,
       } as PlanLimits;
     },
     enabled: !!empresaId,
