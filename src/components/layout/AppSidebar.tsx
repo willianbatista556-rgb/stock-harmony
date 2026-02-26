@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Package,
@@ -23,32 +23,42 @@ import {
   Activity,
   FileSpreadsheet,
   Shield,
+  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSubscription } from '@/hooks/useSubscription';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { toast } from 'sonner';
 
-const menuItems = [
+interface MenuItem {
+  icon: any;
+  label: string;
+  path: string;
+  module?: string; // maps to mod_xxx in plan_limits
+}
+
+const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: Monitor, label: 'PDV', path: '/pdv' },
-  { icon: Landmark, label: 'Caixa', path: '/caixa' },
+  { icon: Monitor, label: 'PDV', path: '/pdv', module: 'pdv' },
+  { icon: Landmark, label: 'Caixa', path: '/caixa', module: 'pdv' },
   { icon: Package, label: 'Produtos', path: '/produtos' },
   { icon: FolderTree, label: 'Categorias', path: '/categorias' },
   { icon: Warehouse, label: 'Depósitos', path: '/depositos' },
   { icon: ArrowRightLeft, label: 'Movimentações', path: '/movimentacoes' },
   { icon: Truck, label: 'Fornecedores', path: '/fornecedores' },
   { icon: ShoppingCart, label: 'Compras', path: '/compras' },
-  { icon: ClipboardList, label: 'Inventário', path: '/estoque/inventarios' },
-  { icon: BarChart3, label: 'Relatórios', path: '/relatorios' },
-  { icon: Receipt, label: 'Contas a Pagar', path: '/financeiro/contas-pagar' },
-  { icon: HandCoins, label: 'Contas a Receber', path: '/financeiro/contas-receber' },
-  { icon: Activity, label: 'Fluxo de Caixa', path: '/financeiro/fluxo-caixa' },
-  { icon: FileSpreadsheet, label: 'DRE', path: '/financeiro/dre' },
+  { icon: ClipboardList, label: 'Inventário', path: '/estoque/inventarios', module: 'inventario' },
+  { icon: BarChart3, label: 'Relatórios', path: '/relatorios', module: 'relatorios' },
+  { icon: Receipt, label: 'Contas a Pagar', path: '/financeiro/contas-pagar', module: 'financeiro' },
+  { icon: HandCoins, label: 'Contas a Receber', path: '/financeiro/contas-receber', module: 'financeiro' },
+  { icon: Activity, label: 'Fluxo de Caixa', path: '/financeiro/fluxo-caixa', module: 'financeiro' },
+  { icon: FileSpreadsheet, label: 'DRE', path: '/financeiro/dre', module: 'dre' },
 ];
 
-const bottomItems = [
+const bottomItems: MenuItem[] = [
   { icon: Shield, label: 'Auditoria', path: '/auditoria' },
   { icon: Users, label: 'Usuários', path: '/usuarios' },
   { icon: Settings, label: 'Configurações', path: '/configuracoes' },
@@ -57,7 +67,9 @@ const bottomItems = [
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { profile, userRole, signOut } = useAuth();
+  const { hasModule } = useSubscription();
 
   const initials = profile?.nome
     ? profile.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -94,21 +106,39 @@ export function AppSidebar() {
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const locked = item.module ? !hasModule(item.module) : false;
+
+          const handleClick = (e: React.MouseEvent) => {
+            if (locked) {
+              e.preventDefault();
+              toast.error(`"${item.label}" não está disponível no seu plano`, {
+                description: 'Faça upgrade para desbloquear.',
+                action: { label: 'Ver planos', onClick: () => navigate('/configuracoes') },
+              });
+            }
+          };
+
           const NavItem = (
             <Link
               key={item.path}
-              to={item.path}
+              to={locked ? '#' : item.path}
+              onClick={handleClick}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                isActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                locked
+                  ? "text-sidebar-foreground/40 cursor-not-allowed"
+                  : isActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-md"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 collapsed && "justify-center"
               )}
             >
               <item.icon className={cn("w-5 h-5 shrink-0", isActive && "animate-scale-in")} />
               {!collapsed && (
-                <span className="font-medium animate-fade-in">{item.label}</span>
+                <span className="font-medium animate-fade-in flex-1">{item.label}</span>
+              )}
+              {!collapsed && locked && (
+                <Lock className="w-3.5 h-3.5 text-sidebar-foreground/40 shrink-0" />
               )}
             </Link>
           );
