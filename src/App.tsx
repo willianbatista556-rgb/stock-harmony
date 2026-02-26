@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 import Auth from "./pages/Auth";
+import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import Produtos from "./pages/Produtos";
 import PDV from "./pages/PDV";
@@ -37,9 +38,13 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public */}
+            <Route path="/" element={<LandingPage />} />
             <Route path="/auth" element={<Auth />} />
+
+            {/* App (authenticated) */}
             <Route
-              path="/"
+              path="/dashboard"
               element={
                 <AppLayout>
                   <Dashboard />
