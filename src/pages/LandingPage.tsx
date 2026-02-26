@@ -118,12 +118,19 @@ function Hero() {
 
 /* ───────── PRA QUEM ───────── */
 const segments = [
-  { icon: ShoppingCart, label: 'Lojas de roupas', desc: 'Controle por tamanho, cor e filial' },
-  { icon: Package, label: 'Material de construção', desc: 'SKUs pesados, estoque mínimo e reposição' },
-  { icon: Barcode, label: 'Pet shops', desc: 'Leitor de código de barras + PDV rápido' },
-  { icon: Receipt, label: 'Farmácias', desc: 'Alto giro, estoque crítico e multi-filial' },
-  { icon: MapPin, label: 'Papelarias', desc: 'Muitos SKUs, preço variado e inventário' },
-  { icon: Calculator, label: 'Autopeças', desc: 'Busca por código, margem e transferências' },
+  { icon: ShoppingCart, label: 'Lojas de roupas', desc: 'Controle por grade, cor, tamanho e filial' },
+  { icon: MapPin, label: 'Lojas de calçados', desc: 'Multi-filial com transferências e inventário rápido' },
+  { icon: Package, label: 'Material de construção', desc: 'SKUs pesados, estoque mínimo e reposição automática' },
+  { icon: Barcode, label: 'Mercados pequenos', desc: 'PDV rápido com leitor de código de barras e caixa' },
+  { icon: Calculator, label: 'Autopeças', desc: 'Busca por código, margem por peça e transferências' },
+  { icon: Clock, label: 'Assistência técnica', desc: 'Controle de peças, estoque de componentes e OS' },
+  { icon: Receipt, label: 'Lojas de variedades', desc: 'Muitos SKUs, preço variado e crediário pro cliente' },
+];
+
+const notFor = [
+  'Restaurantes e food service',
+  'Indústria e manufatura',
+  'Escritórios contábeis',
 ];
 
 function PraQuem() {
@@ -152,6 +159,19 @@ function PraQuem() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Not for */}
+        <div className="mt-10 text-center">
+          <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wider font-medium">Não é pra:</p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {notFor.map((item) => (
+              <span key={item} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70 bg-muted/50 rounded-full px-3 py-1">
+                <X className="w-3 h-3" />
+                {item}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
     </section>
