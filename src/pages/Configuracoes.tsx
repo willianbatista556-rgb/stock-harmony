@@ -442,6 +442,9 @@ export default function Configuracoes() {
                     { key: 'mod_transferencias', label: 'Transferências' },
                     { key: 'mod_relatorios', label: 'Relatórios' },
                     { key: 'mod_dre', label: 'DRE' },
+                    { key: 'mod_bi', label: 'BI / Analytics' },
+                    { key: 'mod_api', label: 'API' },
+                    { key: 'mod_integracoes', label: 'Integrações' },
                   ].map((mod) => {
                     const enabled = !!(limits as any)[mod.key];
                     return (
