@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const menuItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
   { icon: Monitor, label: 'PDV', path: '/pdv' },
   { icon: Landmark, label: 'Caixa', path: '/caixa' },
   { icon: Package, label: 'Produtos', path: '/produtos' },
