@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import {
   Package, BarChart3, ShoppingCart, ArrowRight, Check, Star,
   Warehouse, RefreshCw, ClipboardList, Users, Shield, Zap,
-  ChevronRight, Menu, X,
+  ChevronRight, Menu, X, Minus,
 } from 'lucide-react';
 
 /* ───────── NAVBAR ───────── */
@@ -188,55 +188,70 @@ function Features() {
 /* ───────── PRICING ───────── */
 const plans = [
   {
-    name: 'Grátis',
+    name: 'Base',
     price: 'R$ 0',
     period: '/mês',
     desc: 'Para quem está começando',
     cta: 'Começar grátis',
     popular: false,
     features: [
-      '1 usuário',
-      '1 local / depósito',
-      '50 produtos',
-      'PDV básico',
+      '2 usuários',
+      '1 filial',
+      '100 produtos',
+      'PDV completo',
+      'Controle de estoque',
       'Relatório de vendas',
+    ],
+    excluded: [
+      'Financeiro',
+      'Inventários',
+      'Transferências',
     ],
   },
   {
     name: 'Pro',
-    price: 'R$ 97',
+    price: 'R$ 149',
+    priceDecimal: ',90',
     period: '/mês',
+    annualPrice: 'R$ 119,90/mês no plano anual',
     desc: 'Para lojas em crescimento',
     cta: 'Teste grátis 14 dias',
     popular: true,
     features: [
-      'Até 5 usuários',
-      '3 locais / filiais',
-      'Produtos ilimitados',
-      'PDV completo + atalhos',
+      'Até 10 usuários',
+      '5 filiais',
+      '5.000 produtos',
+      'Tudo do Base +',
+      'Financeiro completo (contas a pagar/receber)',
+      'DRE automático',
+      'Inventários com recontagem',
       'Transferências entre locais',
-      'Inventário com recontagem',
       'Relatórios + Curva ABC',
       'Suporte prioritário',
     ],
+    excluded: [],
   },
   {
-    name: 'Business',
-    price: 'R$ 197',
+    name: 'Premium',
+    price: 'R$ 299',
+    priceDecimal: ',90',
     period: '/mês',
+    annualPrice: 'R$ 239,90/mês no plano anual',
     desc: 'Para operações multi-filial',
     cta: 'Falar com vendas',
     popular: false,
     features: [
       'Usuários ilimitados',
-      'Locais ilimitados',
+      'Filiais ilimitadas',
       'Produtos ilimitados',
       'Tudo do Pro +',
+      'BI & Analytics avançado',
       'API de integrações',
-      'Relatórios avançados',
+      'Integrações externas',
       'Suporte dedicado',
       'Onboarding assistido',
     ],
+    excluded: [],
   },
 ];
 
@@ -278,14 +293,28 @@ function Pricing() {
               </div>
 
               <div className="mb-6">
-                <span className="font-display text-4xl font-bold text-foreground">{plan.price}</span>
-                <span className="text-muted-foreground text-sm">{plan.period}</span>
+                <div className="flex items-baseline">
+                  <span className="font-display text-4xl font-bold text-foreground">{plan.price}</span>
+                  {'priceDecimal' in plan && (
+                    <span className="font-display text-2xl font-bold text-foreground">{(plan as any).priceDecimal}</span>
+                  )}
+                  <span className="text-muted-foreground text-sm ml-1">{plan.period}</span>
+                </div>
+                {'annualPrice' in plan && (
+                  <p className="text-xs text-muted-foreground mt-1">{(plan as any).annualPrice}</p>
+                )}
               </div>
 
-              <ul className="space-y-3 mb-8 flex-1">
+              <ul className="space-y-3 mb-4 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5 text-sm text-foreground">
                     <Check className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                    {f}
+                  </li>
+                ))}
+                {'excluded' in plan && (plan as any).excluded.map((f: string) => (
+                  <li key={f} className="flex items-start gap-2.5 text-sm text-muted-foreground/60">
+                    <Minus className="w-4 h-4 mt-0.5 shrink-0" />
                     {f}
                   </li>
                 ))}
