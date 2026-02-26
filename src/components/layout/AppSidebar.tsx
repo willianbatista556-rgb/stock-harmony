@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useFeatureFlags, type FeatureKey } from '@/hooks/useFeatureFlags';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -38,7 +38,8 @@ interface MenuItem {
   icon: any;
   label: string;
   path: string;
-  module?: string; // maps to mod_xxx in plan_limits
+  module?: string;   // plan-level: locked with padlock if missing
+  feature?: FeatureKey; // empresa-level: hidden if disabled
 }
 
 const menuItems: MenuItem[] = [
@@ -56,7 +57,7 @@ const menuItems: MenuItem[] = [
   { icon: Receipt, label: 'Contas a Pagar', path: '/financeiro/contas-pagar', module: 'financeiro' },
   { icon: HandCoins, label: 'Contas a Receber', path: '/financeiro/contas-receber', module: 'financeiro' },
   { icon: Activity, label: 'Fluxo de Caixa', path: '/financeiro/fluxo-caixa', module: 'financeiro' },
-  { icon: BookOpen, label: 'Crediário', path: '/financeiro/crediario', module: 'financeiro' },
+  { icon: BookOpen, label: 'Crediário', path: '/financeiro/crediario', module: 'financeiro', feature: 'crediario' },
   { icon: FileSpreadsheet, label: 'DRE', path: '/financeiro/dre', module: 'dre' },
 ];
 
@@ -71,7 +72,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, userRole, signOut } = useAuth();
-  const { hasModule } = useSubscription();
+  const { hasModule, hasFeature } = useFeatureFlags();
 
   const initials = profile?.nome
     ? profile.nome.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -107,6 +108,9 @@ export function AppSidebar() {
       {/* Navigation */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
+          // Feature flag: completely hidden if empresa disabled it
+          if (item.feature && !hasFeature(item.feature)) return null;
+
           const isActive = location.pathname === item.path;
           const locked = item.module ? !hasModule(item.module) : false;
 

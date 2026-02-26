@@ -695,6 +695,35 @@ export type Database = {
           },
         ]
       }
+      empresa_features: {
+        Row: {
+          ativo: boolean
+          chave: string
+          criado_em: string
+          empresa_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          chave: string
+          criado_em?: string
+          empresa_id: string
+        }
+        Update: {
+          ativo?: boolean
+          chave?: string
+          criado_em?: string
+          empresa_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empresa_features_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       empresas: {
         Row: {
           ativa: boolean | null
@@ -2687,6 +2716,10 @@ export type Database = {
       get_empresa_limits: { Args: { p_empresa_id: string }; Returns: Json }
       get_empresa_usage: { Args: { p_empresa_id: string }; Returns: Json }
       get_user_empresa_id: { Args: { _user_id: string }; Returns: string }
+      has_feature: {
+        Args: { p_chave: string; p_empresa_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
