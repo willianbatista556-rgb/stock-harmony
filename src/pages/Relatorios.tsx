@@ -23,6 +23,7 @@ import {
   useRelatorioTopProdutos,
   useRelatorioEstoque,
   useCurvaABC,
+  useRelatorioComissoes,
 } from '@/hooks/useRelatorios';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
