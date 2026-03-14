@@ -39,23 +39,46 @@ export interface FluxoDiario {
 
 // ── Queries ───────────────────────────────────────────────────
 
-/** Busca caixa aberto por terminal_id */
+/** Busca caixa aberto do USUÁRIO ATUAL neste terminal */
 export function useCaixaAbertoPorTerminal(terminalId?: string) {
+  const { profile, user } = useAuth();
+
+  return useQuery({
+    queryKey: ['caixa-aberto', 'terminal', terminalId, user?.id],
+    queryFn: async () => {
+      if (!profile?.empresa_id || !terminalId || !user?.id) return null;
+      const { data, error } = await supabase
+        .from('caixas')
+        .select('*')
+        .eq('empresa_id', profile.empresa_id)
+        .eq('terminal_id', terminalId)
+        .eq('usuario_id', user.id)
+        .eq('status', 'aberto')
+        .maybeSingle();
+      if (error) throw error;
+      return data as Caixa | null;
+    },
+    enabled: !!profile?.empresa_id && !!terminalId && !!user?.id,
+  });
+}
+
+/** Lista TODOS os caixas abertos neste terminal (multi-operador) */
+export function useCaixasAbertasPorTerminal(terminalId?: string) {
   const { profile } = useAuth();
 
   return useQuery({
-    queryKey: ['caixa-aberto', 'terminal', terminalId],
+    queryKey: ['caixas-abertos', 'terminal', terminalId],
     queryFn: async () => {
-      if (!profile?.empresa_id || !terminalId) return null;
+      if (!profile?.empresa_id || !terminalId) return [];
       const { data, error } = await supabase
         .from('caixas')
         .select('*')
         .eq('empresa_id', profile.empresa_id)
         .eq('terminal_id', terminalId)
         .eq('status', 'aberto')
-        .maybeSingle();
+        .order('aberto_em', { ascending: false });
       if (error) throw error;
-      return data as Caixa | null;
+      return (data || []) as Caixa[];
     },
     enabled: !!profile?.empresa_id && !!terminalId,
   });
