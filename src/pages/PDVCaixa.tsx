@@ -23,7 +23,7 @@ import {
 } from '@/hooks/useTerminais';
 import { useDepositos } from '@/hooks/useDepositos';
 import {
-  useCaixaAbertoPorTerminal, useCaixaMovimentacoes,
+  useCaixaAbertoPorTerminal, useCaixasAbertasPorTerminal, useCaixaMovimentacoes,
   useAbrirCaixa, useFecharCaixa, useSangria, useSuprimento,
   CaixaMovimentacao,
 } from '@/hooks/useCaixa';
@@ -68,8 +68,11 @@ export default function PDVCaixa() {
   const terminal: Terminal | null = terminalByIdent || null;
   const depositoNome = terminal ? depositos.find(d => d.id === terminal.deposito_id)?.nome : null;
 
-  // Caixa for this terminal
+  // Caixa for this terminal (current user)
   const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAbertoPorTerminal(terminal?.id);
+  // All open caixas on this terminal (multi-operator visibility)
+  const { data: caixasNoTerminal = [] } = useCaixasAbertasPorTerminal(terminal?.id);
+  const outrosCaixas = caixasNoTerminal.filter(c => c.usuario_id !== user?.id);
   const { data: movimentacoes = [] } = useCaixaMovimentacoes(caixaAberto?.id);
 
   const abrirCaixa = useAbrirCaixa();
@@ -195,6 +198,12 @@ export default function PDVCaixa() {
                 <ArrowUpCircle className="w-4 h-4" /> Suprimento
               </Button>
             </>
+          )}
+
+          {outrosCaixas.length > 0 && (
+            <Badge variant="outline" className="bg-accent/50 text-accent-foreground border-accent px-3 py-1.5">
+              +{outrosCaixas.length} operador{outrosCaixas.length > 1 ? 'es' : ''} ativo{outrosCaixas.length > 1 ? 's' : ''}
+            </Badge>
           )}
 
           <Button variant="outline" onClick={() => navigate('/pdv')} className="gap-2">
