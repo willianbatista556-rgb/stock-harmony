@@ -220,6 +220,8 @@ const App = () => (
                 </AppLayout>
               }
             />
+            <Route path="/inventario-offline" element={<InventarioOffline />} />
+            <Route path="/inventario-offline/:id" element={<InventarioOfflineContagem />} />
             <Route
               path="/auditoria"
               element={
