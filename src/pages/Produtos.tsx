@@ -191,6 +191,8 @@ export default function Produtos() {
           Mostrando {filteredProdutos.length} de {produtos.length} produtos
         </p>
       </div>
+
+      <ImportProdutosModal open={showImport} onOpenChange={setShowImport} />
     </div>
   );
 }
