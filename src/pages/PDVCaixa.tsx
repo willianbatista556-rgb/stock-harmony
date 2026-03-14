@@ -68,8 +68,11 @@ export default function PDVCaixa() {
   const terminal: Terminal | null = terminalByIdent || null;
   const depositoNome = terminal ? depositos.find(d => d.id === terminal.deposito_id)?.nome : null;
 
-  // Caixa for this terminal
+  // Caixa for this terminal (current user)
   const { data: caixaAberto, isLoading: caixaLoading } = useCaixaAbertoPorTerminal(terminal?.id);
+  // All open caixas on this terminal (multi-operator visibility)
+  const { data: caixasNoTerminal = [] } = useCaixasAbertasPorTerminal(terminal?.id);
+  const outrosCaixas = caixasNoTerminal.filter(c => c.usuario_id !== user?.id);
   const { data: movimentacoes = [] } = useCaixaMovimentacoes(caixaAberto?.id);
 
   const abrirCaixa = useAbrirCaixa();
