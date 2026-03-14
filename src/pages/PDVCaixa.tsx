@@ -200,6 +200,12 @@ export default function PDVCaixa() {
             </>
           )}
 
+          {outrosCaixas.length > 0 && (
+            <Badge variant="outline" className="bg-accent/50 text-accent-foreground border-accent px-3 py-1.5">
+              +{outrosCaixas.length} operador{outrosCaixas.length > 1 ? 'es' : ''} ativo{outrosCaixas.length > 1 ? 's' : ''}
+            </Badge>
+          )}
+
           <Button variant="outline" onClick={() => navigate('/pdv')} className="gap-2">
             <ShoppingCart className="w-4 h-4" /> Ir ao PDV
           </Button>
