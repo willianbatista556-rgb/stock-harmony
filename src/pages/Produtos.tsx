@@ -34,6 +34,26 @@ export default function Produtos() {
   const [search, setSearch] = useState('');
   const { data: produtos = [], isLoading } = useProdutos();
   const [showImport, setShowImport] = useState(false);
+  const [showEtiquetas, setShowEtiquetas] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === filteredProdutos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProdutos.map(p => p.id)));
+    }
+  };
+
+  const selectedProducts = produtos.filter(p => selectedIds.has(p.id));
 
   const filteredProdutos = produtos.filter((p) =>
     p.nome.toLowerCase().includes(search.toLowerCase()) ||
