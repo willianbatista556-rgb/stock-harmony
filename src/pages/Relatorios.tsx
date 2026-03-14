@@ -3,7 +3,7 @@ import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   BarChart3, Package, TrendingUp, DollarSign, Download, Filter,
-  ArrowUpDown, AlertTriangle, CheckCircle2, XCircle,
+  ArrowUpDown, AlertTriangle, CheckCircle2, XCircle, Users,
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
