@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye, Upload } from 'lucide-react';
+import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye, Upload, Printer, CheckSquare } from 'lucide-react';
 import { ImportProdutosModal } from '@/components/produtos/ImportProdutosModal';
+import { EtiquetasModal } from '@/components/produtos/EtiquetasModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -32,6 +34,26 @@ export default function Produtos() {
   const [search, setSearch] = useState('');
   const { data: produtos = [], isLoading } = useProdutos();
   const [showImport, setShowImport] = useState(false);
+  const [showEtiquetas, setShowEtiquetas] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === filteredProdutos.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredProdutos.map(p => p.id)));
+    }
+  };
+
+  const selectedProducts = produtos.filter(p => selectedIds.has(p.id));
 
   const filteredProdutos = produtos.filter((p) =>
     p.nome.toLowerCase().includes(search.toLowerCase()) ||
@@ -56,7 +78,13 @@ export default function Produtos() {
             Gerencie o cadastro de produtos do seu estoque
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {selectedIds.size > 0 && (
+            <Button variant="outline" onClick={() => setShowEtiquetas(true)} className="gap-2">
+              <Printer className="w-4 h-4" />
+              Etiquetas ({selectedIds.size})
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
             <Upload className="w-4 h-4" />
             Importar CSV
@@ -90,6 +118,12 @@ export default function Produtos() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={filteredProdutos.length > 0 && selectedIds.size === filteredProdutos.length}
+                  onCheckedChange={toggleAll}
+                />
+              </TableHead>
               <TableHead className="font-semibold">Produto</TableHead>
               <TableHead className="font-semibold">Unidade</TableHead>
               <TableHead className="font-semibold">Grade</TableHead>
@@ -101,13 +135,13 @@ export default function Produtos() {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
             ) : filteredProdutos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   Nenhum produto encontrado
                 </TableCell>
               </TableRow>
@@ -119,6 +153,12 @@ export default function Produtos() {
                   className="animate-slide-in-up hover:bg-muted/50 transition-colors"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(produto.id)}
+                      onCheckedChange={() => toggleSelect(produto.id)}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -193,6 +233,7 @@ export default function Produtos() {
       </div>
 
       <ImportProdutosModal open={showImport} onOpenChange={setShowImport} />
+      <EtiquetasModal open={showEtiquetas} onOpenChange={setShowEtiquetas} products={selectedProducts} />
     </div>
   );
 }
