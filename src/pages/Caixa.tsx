@@ -206,18 +206,35 @@ export default function Caixa() {
             </SelectTrigger>
             <SelectContent>
               {terminais.map(t => {
-                const isOpen = caixasAbertos.some(c => c.terminal_id === t.id);
+                const openCount = caixasAbertos.filter(c => c.terminal_id === t.id).length;
                 return (
                   <SelectItem key={t.id} value={t.id}>
                     <span className="flex items-center gap-2">
                       {t.nome}
-                      {isOpen && <span className="w-2 h-2 rounded-full bg-success inline-block" />}
+                      {openCount > 0 && <span className="w-2 h-2 rounded-full bg-success inline-block" />}
+                      {openCount > 1 && <span className="text-xs text-muted-foreground">({openCount})</span>}
                     </span>
                   </SelectItem>
                 );
               })}
             </SelectContent>
           </Select>
+
+          {/* Caixa selector when multiple operators on same terminal */}
+          {caixasDoTerminal.length > 1 && (
+            <Select value={selectedCaixaId} onValueChange={setSelectedCaixaId}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Selecione o caixa" />
+              </SelectTrigger>
+              <SelectContent>
+                {caixasDoTerminal.map((c, i) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    Operador {i + 1} · {formatTime(c.aberto_em)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           {!caixaAberto && selectedTerminal ? (
             <Button onClick={() => { setShowAbrir(true); }} className="gradient-primary text-primary-foreground gap-2">
