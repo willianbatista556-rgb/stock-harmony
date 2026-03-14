@@ -61,7 +61,20 @@ export default function Caixa() {
   }, [terminais, caixasAbertos, selectedTerminalId]);
 
   const selectedTerminal = terminais.find(t => t.id === selectedTerminalId);
-  const caixaAberto = caixasAbertos.find(c => c.terminal_id === selectedTerminalId) || null;
+  // All open caixas for this terminal (multi-operator support)
+  const caixasDoTerminal = caixasAbertos.filter(c => c.terminal_id === selectedTerminalId);
+  const [selectedCaixaId, setSelectedCaixaId] = useState('');
+  
+  // Auto-select first caixa when terminal changes
+  useEffect(() => {
+    if (caixasDoTerminal.length > 0 && !caixasDoTerminal.find(c => c.id === selectedCaixaId)) {
+      setSelectedCaixaId(caixasDoTerminal[0].id);
+    } else if (caixasDoTerminal.length === 0) {
+      setSelectedCaixaId('');
+    }
+  }, [caixasDoTerminal, selectedCaixaId]);
+
+  const caixaAberto = caixasDoTerminal.find(c => c.id === selectedCaixaId) || caixasDoTerminal[0] || null;
   const { data: movimentacoes = [] } = useCaixaMovimentacoes(caixaAberto?.id);
 
   const abrirCaixa = useAbrirCaixa();
