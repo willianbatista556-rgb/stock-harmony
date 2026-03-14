@@ -31,6 +31,7 @@ function getStockStatus(estoque: number, estoqueMin: number) {
 export default function Produtos() {
   const [search, setSearch] = useState('');
   const { data: produtos = [], isLoading } = useProdutos();
+  const [showImport, setShowImport] = useState(false);
 
   const filteredProdutos = produtos.filter((p) =>
     p.nome.toLowerCase().includes(search.toLowerCase()) ||
