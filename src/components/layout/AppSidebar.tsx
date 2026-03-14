@@ -60,6 +60,7 @@ const menuItems: MenuItem[] = [
   { icon: Activity, label: 'Fluxo de Caixa', path: '/financeiro/fluxo-caixa', module: 'financeiro' },
   { icon: BookOpen, label: 'Crediário', path: '/financeiro/crediario', module: 'financeiro', feature: 'crediario' },
   { icon: FileSpreadsheet, label: 'DRE', path: '/financeiro/dre', module: 'dre' },
+  { icon: ScanBarcode, label: 'Contagem Offline', path: '/inventario-offline' },
 ];
 
 const bottomItems: MenuItem[] = [
