@@ -33,6 +33,8 @@ import FluxoCaixa from "./pages/FluxoCaixa";
 import DRE from "./pages/DRE";
 import Auditoria from "./pages/Auditoria";
 import Crediario from "./pages/Crediario";
+import InventarioOffline from "./pages/InventarioOffline";
+import InventarioOfflineContagem from "./pages/InventarioOfflineContagem";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -218,6 +220,8 @@ const App = () => (
                 </AppLayout>
               }
             />
+            <Route path="/inventario-offline" element={<InventarioOffline />} />
+            <Route path="/inventario-offline/:id" element={<InventarioOfflineContagem />} />
             <Route
               path="/auditoria"
               element={
