@@ -23,7 +23,7 @@ import {
 } from '@/hooks/useTerminais';
 import { useDepositos } from '@/hooks/useDepositos';
 import {
-  useCaixaAbertoPorTerminal, useCaixaMovimentacoes,
+  useCaixaAbertoPorTerminal, useCaixasAbertasPorTerminal, useCaixaMovimentacoes,
   useAbrirCaixa, useFecharCaixa, useSangria, useSuprimento,
   CaixaMovimentacao,
 } from '@/hooks/useCaixa';
