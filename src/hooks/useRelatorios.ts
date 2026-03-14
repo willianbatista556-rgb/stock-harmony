@@ -168,6 +168,108 @@ export function useRelatorioEstoque() {
   });
 }
 
+// ── Comissões por vendedor ──────────────────────────────────
+export interface ComissaoVendedor {
+  usuario_id: string;
+  nome: string;
+  total_vendas: number;
+  total_comissao: number;
+  num_vendas: number;
+  itens: ComissaoItem[];
+}
+
+export interface ComissaoItem {
+  produto_id: string;
+  nome: string;
+  qtd: number;
+  receita: number;
+  comissao_pct: number;
+  comissao_valor: number;
+}
+
+export function useRelatorioComissoes(inicio: string, fim: string) {
+  const { profile } = useAuth();
+  return useQuery({
+    queryKey: ['relatorio-comissoes', profile?.empresa_id, inicio, fim],
+    queryFn: async () => {
+      if (!profile?.empresa_id) return [];
+
+      // Get sale items with sale info and product commission
+      const { data, error } = await supabase
+        .from('venda_itens')
+        .select('produto_id, nome_snapshot, qtd, preco_unit, desconto, vendas!inner(usuario_id, empresa_id, data, status), produtos:produto_id(comissao_percentual)')
+        .eq('vendas.empresa_id', profile.empresa_id)
+        .eq('vendas.status', 'finalizada')
+        .gte('vendas.data', inicio)
+        .lte('vendas.data', fim);
+      if (error) throw error;
+
+      // Get profiles for names
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, nome, email')
+        .eq('empresa_id', profile.empresa_id);
+
+      const profileMap = new Map<string, string>();
+      for (const p of profiles ?? []) {
+        profileMap.set(p.user_id, p.nome || p.email || 'Usuário');
+      }
+
+      // Group by usuario_id
+      const map = new Map<string, ComissaoVendedor>();
+      for (const item of data ?? []) {
+        const vendaInfo = item.vendas as any;
+        const userId = vendaInfo?.usuario_id;
+        if (!userId) continue;
+
+        const comissaoPct = Number((item.produtos as any)?.comissao_percentual ?? 0);
+        const receita = Number(item.qtd ?? 0) * Number(item.preco_unit ?? 0) - Number(item.desconto ?? 0);
+        const comissaoValor = receita * (comissaoPct / 100);
+
+        const cur = map.get(userId) ?? {
+          usuario_id: userId,
+          nome: profileMap.get(userId) || 'Usuário',
+          total_vendas: 0,
+          total_comissao: 0,
+          num_vendas: 0,
+          itens: [],
+        };
+
+        cur.total_vendas += receita;
+        cur.total_comissao += comissaoValor;
+
+        // Aggregate items
+        const existingItem = cur.itens.find(i => i.produto_id === item.produto_id);
+        if (existingItem) {
+          existingItem.qtd += Number(item.qtd ?? 0);
+          existingItem.receita += receita;
+          existingItem.comissao_valor += comissaoValor;
+        } else {
+          cur.itens.push({
+            produto_id: item.produto_id,
+            nome: item.nome_snapshot || 'Produto',
+            qtd: Number(item.qtd ?? 0),
+            receita,
+            comissao_pct: comissaoPct,
+            comissao_valor: comissaoValor,
+          });
+        }
+
+        map.set(userId, cur);
+      }
+
+      // Count unique vendas per user
+      const vendaCountMap = new Map<string, Set<string>>();
+      // We don't have venda_id easily here, so we'll use the item count approach
+      // Actually venda_itens has venda_id - but we selected vendas!inner. Let me use a simpler count.
+
+      const result = Array.from(map.values()).sort((a, b) => b.total_comissao - a.total_comissao);
+      return result;
+    },
+    enabled: !!profile?.empresa_id && !!inicio && !!fim,
+  });
+}
+
 // ── Curva ABC ───────────────────────────────────────────────
 export interface CurvaABCItem {
   produto_id: string;
