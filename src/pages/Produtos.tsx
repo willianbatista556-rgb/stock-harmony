@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye, Upload } from 'lucide-react';
+import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye, Upload, Printer, CheckSquare } from 'lucide-react';
 import { ImportProdutosModal } from '@/components/produtos/ImportProdutosModal';
+import { EtiquetasModal } from '@/components/produtos/EtiquetasModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
