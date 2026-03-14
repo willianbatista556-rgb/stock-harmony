@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
+import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye, Upload } from 'lucide-react';
+import { ImportProdutosModal } from '@/components/produtos/ImportProdutosModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ function getStockStatus(estoque: number, estoqueMin: number) {
 export default function Produtos() {
   const [search, setSearch] = useState('');
   const { data: produtos = [], isLoading } = useProdutos();
+  const [showImport, setShowImport] = useState(false);
 
   const filteredProdutos = produtos.filter((p) =>
     p.nome.toLowerCase().includes(search.toLowerCase()) ||
@@ -54,10 +56,16 @@ export default function Produtos() {
             Gerencie o cadastro de produtos do seu estoque
           </p>
         </div>
-        <Button className="gradient-primary text-white hover:opacity-90 gap-2">
-          <Plus className="w-4 h-4" />
-          Novo Produto
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </Button>
+          <Button className="gradient-primary text-white hover:opacity-90 gap-2">
+            <Plus className="w-4 h-4" />
+            Novo Produto
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -183,6 +191,8 @@ export default function Produtos() {
           Mostrando {filteredProdutos.length} de {produtos.length} produtos
         </p>
       </div>
+
+      <ImportProdutosModal open={showImport} onOpenChange={setShowImport} />
     </div>
   );
 }
