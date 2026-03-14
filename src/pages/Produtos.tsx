@@ -233,6 +233,7 @@ export default function Produtos() {
       </div>
 
       <ImportProdutosModal open={showImport} onOpenChange={setShowImport} />
+      <EtiquetasModal open={showEtiquetas} onOpenChange={setShowEtiquetas} products={selectedProducts} />
     </div>
   );
 }
