@@ -118,6 +118,12 @@ export default function Produtos() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={filteredProdutos.length > 0 && selectedIds.size === filteredProdutos.length}
+                  onCheckedChange={toggleAll}
+                />
+              </TableHead>
               <TableHead className="font-semibold">Produto</TableHead>
               <TableHead className="font-semibold">Unidade</TableHead>
               <TableHead className="font-semibold">Grade</TableHead>
