@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
+import { Package, Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Eye, Upload } from 'lucide-react';
+import { ImportProdutosModal } from '@/components/produtos/ImportProdutosModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
