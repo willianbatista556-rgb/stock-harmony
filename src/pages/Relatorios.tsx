@@ -666,6 +666,139 @@ function TabCurvaABC() {
   );
 }
 
+// ── Tab: Comissões ──────────────────────────────────────────
+function TabComissoes() {
+  const periodo = usePeriodo();
+  const { data: comissoes = [], isLoading } = useRelatorioComissoes(periodo.inicio, periodo.fim);
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+
+  const totalComissao = useMemo(() => comissoes.reduce((s, c) => s + c.total_comissao, 0), [comissoes]);
+  const totalVendas = useMemo(() => comissoes.reduce((s, c) => s + c.total_vendas, 0), [comissoes]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <PeriodoSelector periodo={periodo} />
+        <Button
+          variant="outline" size="sm"
+          onClick={() => exportCSV(
+            comissoes.flatMap(c => c.itens.map(i => ({
+              Vendedor: c.nome, Produto: i.nome, Qtd: i.qtd,
+              Receita: i.receita.toFixed(2), Comissao_Pct: i.comissao_pct,
+              Comissao_Valor: i.comissao_valor.toFixed(2),
+            }))),
+            'relatorio-comissoes'
+          )}
+        >
+          <Download className="w-4 h-4 mr-2" /> Exportar CSV
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="shadow-card">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Total em comissões</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalComissao)}</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-card">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Receita do período</p>
+            <p className="text-2xl font-bold">{formatCurrency(totalVendas)}</p>
+          </CardContent>
+        </Card>
+        <Card className="shadow-card">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">Vendedores</p>
+            <p className="text-2xl font-bold">{comissoes.length}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {comissoes.length > 0 && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="text-base">Comissão por vendedor</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={comissoes} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis type="number" tickFormatter={(v) => `R$${(v).toFixed(0)}`} className="text-xs" />
+                <YAxis type="category" dataKey="nome" width={120} className="text-xs" />
+                <RechartsTooltip
+                  formatter={(v: number) => [formatCurrency(v), 'Comissão']}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))' }}
+                />
+                <Bar dataKey="total_comissao" fill="hsl(217, 91%, 50%)" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-base">Detalhamento por vendedor</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-auto max-h-[500px]">
+            <Table>
+              <TableHeader className="sticky top-0 bg-card z-10">
+                <TableRow>
+                  <TableHead>Vendedor</TableHead>
+                  <TableHead className="text-right">Receita</TableHead>
+                  <TableHead className="text-right">Comissão</TableHead>
+                  <TableHead className="text-right">% Médio</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {comissoes.map(c => (
+                  <React.Fragment key={c.usuario_id}>
+                    <TableRow
+                      className="cursor-pointer"
+                      onClick={() => setExpandedUser(expandedUser === c.usuario_id ? null : c.usuario_id)}
+                    >
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Users className="w-4 h-4 text-muted-foreground" />
+                          {c.nome}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">{formatCurrency(c.total_vendas)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(c.total_comissao)}</TableCell>
+                      <TableCell className="text-right">
+                        {c.total_vendas > 0 ? ((c.total_comissao / c.total_vendas) * 100).toFixed(1) : '0'}%
+                      </TableCell>
+                    </TableRow>
+                    {expandedUser === c.usuario_id && c.itens.map(item => (
+                      <TableRow key={`${c.usuario_id}-${item.produto_id}`} className="bg-muted/30">
+                        <TableCell className="pl-10 text-sm text-muted-foreground">
+                          {item.nome} <span className="text-xs">({item.comissao_pct}%)</span>
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{formatCurrency(item.receita)}</TableCell>
+                        <TableCell className="text-right text-sm">{formatCurrency(item.comissao_valor)}</TableCell>
+                        <TableCell className="text-right text-sm">{item.qtd}un</TableCell>
+                      </TableRow>
+                    ))}
+                  </React.Fragment>
+                ))}
+                {!comissoes.length && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-12">
+                      {isLoading ? 'Carregando...' : 'Sem vendas no período'}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Page principal ──────────────────────────────────────────
 export default function Relatorios() {
   return (
@@ -673,12 +806,12 @@ export default function Relatorios() {
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Relatórios & BI</h1>
         <p className="text-muted-foreground">
-          Análise completa de vendas, estoque e performance dos produtos.
+          Análise completa de vendas, estoque, performance e comissões.
         </p>
       </header>
 
       <Tabs defaultValue="vendas" className="space-y-6">
-        <TabsList className="grid grid-cols-3 w-full max-w-lg">
+        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="vendas" className="gap-2">
             <DollarSign className="w-4 h-4" /> Vendas
           </TabsTrigger>
@@ -687,6 +820,9 @@ export default function Relatorios() {
           </TabsTrigger>
           <TabsTrigger value="abc" className="gap-2">
             <TrendingUp className="w-4 h-4" /> Curva ABC
+          </TabsTrigger>
+          <TabsTrigger value="comissoes" className="gap-2">
+            <Users className="w-4 h-4" /> Comissões
           </TabsTrigger>
         </TabsList>
 
@@ -698,6 +834,9 @@ export default function Relatorios() {
         </TabsContent>
         <TabsContent value="abc">
           <TabCurvaABC />
+        </TabsContent>
+        <TabsContent value="comissoes">
+          <TabComissoes />
         </TabsContent>
       </Tabs>
     </div>
