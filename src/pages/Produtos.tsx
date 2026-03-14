@@ -56,10 +56,16 @@ export default function Produtos() {
             Gerencie o cadastro de produtos do seu estoque
           </p>
         </div>
-        <Button className="gradient-primary text-white hover:opacity-90 gap-2">
-          <Plus className="w-4 h-4" />
-          Novo Produto
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
+            <Upload className="w-4 h-4" />
+            Importar CSV
+          </Button>
+          <Button className="gradient-primary text-white hover:opacity-90 gap-2">
+            <Plus className="w-4 h-4" />
+            Novo Produto
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
