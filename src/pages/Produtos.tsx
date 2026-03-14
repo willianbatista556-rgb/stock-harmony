@@ -78,7 +78,13 @@ export default function Produtos() {
             Gerencie o cadastro de produtos do seu estoque
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {selectedIds.size > 0 && (
+            <Button variant="outline" onClick={() => setShowEtiquetas(true)} className="gap-2">
+              <Printer className="w-4 h-4" />
+              Etiquetas ({selectedIds.size})
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setShowImport(true)} className="gap-2">
             <Upload className="w-4 h-4" />
             Importar CSV
